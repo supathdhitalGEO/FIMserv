@@ -1,10 +1,10 @@
 # Operational OWPFIM
 
-[![Version](https://img.shields.io/github/v/release/supathdhitalGEO/OperationalOWPFIM)](https://github.com/supathdhitalGEO/OperationalOWPFIM/releases)
-[![Downloads](https://img.shields.io/github/downloads/supathdhitalGEO/OperationalOWPFIM/total)](https://github.com/supathdhitalGEO/OperationalOWPFIM/releases)
-[![Issues](https://img.shields.io/github/issues/supathdhitalGEO/OperationalOWPFIM)](https://github.com/supathdhitalGEO/OperationalOWPFIM/issues)
+[![Version](https://img.shields.io/github/v/release/sdmlua/OperationalOWPFIM)](https://github.com/sdmlua/OperationalOWPFIM/releases)
+[![Downloads](https://img.shields.io/github/downloads/sdmlua/OperationalOWPFIM/total)](https://github.com/sdmlua/OperationalOWPFIM/releases)
+[![Issues](https://img.shields.io/github/issues/sdmlua/OperationalOWPFIM)](https://github.com/sdmlua/OperationalOWPFIM/issues)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://opensource.org/licenses/GPL-3.0)
-![Views](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https://github.com/supathdhitalGEO/OperationalOWPFIM&count_bg=%2379C83D&title_bg=%23555555&icon=github.svg&icon_color=%23E7E7E7&title=Views&edge_flat=false)
+![Views](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https://github.com/sdmlua/OperationalOWPFIM&count_bg=%2379C83D&title_bg=%23555555&icon=github.svg&icon_color=%23E7E7E7&title=Views&edge_flat=false)
 
 
 
@@ -49,7 +49,7 @@ To use this code,
 
 **Clone the repository:**
 ```bash
-git clone https://github.com/supathdhitalGEO/OperationalOWPFIM.git
+git clone https://github.com/sdmlua/OperationalOWPFIM.git
 ```
 **Create a virtual environment:**
 Be aware if your terminal is in different directory then user need to give the path of .yml file.
