@@ -1,4 +1,4 @@
-# Operational Flood Inundation MApping(FIM) for CONUS
+# Operational Flood Inundation Mapping(FIM) for CONUS
 
 [![Version](https://img.shields.io/github/v/release/sdmlua/OperationalOWPFIM)](https://github.com/sdmlua/OperationalOWPFIM/releases)
 [![Downloads](https://img.shields.io/github/downloads/sdmlua/OperationalOWPFIM/total)](https://github.com/sdmlua/OperationalOWPFIM/releases)
