@@ -8,7 +8,7 @@
 
 
 
-### **FIM as a Service**
+### **Flood Inundation Mapping as a Service**
 | | |
 | --- | --- |
 | <a href="https://sdml.ua.edu"><img src="https://sdml.ua.edu/wp-content/uploads/2023/01/SDML_logo_Sq_grey.png" alt="SDML Logo" width="300"></a> | This repository is developed to generate Operational flood inundation map using NOAA_OWP Height Above Nearest Drainage (HAND) method-FIM model using National Water Model retrospective and forecasted streamflow data.It is developed under Surface Dynamics Modeling Lab (SDML). |
