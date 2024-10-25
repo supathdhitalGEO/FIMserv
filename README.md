@@ -65,7 +65,7 @@ Now, you are good to go for jupyter notebook.
 | | |
 | --- | --- |
 | ![alt text](https://ciroh.ua.edu/wp-content/uploads/2022/08/CIROHLogo_200x200.png) | Funding for this project was provided by the National Oceanic & Atmospheric Administration (NOAA), awarded to the Cooperative Institute for Research to Operations in Hydrology (CIROH) through the NOAA Cooperative Agreement with The University of Alabama (#Funding ID). |
-| | I would like to acknowledge Thanh Nhan Duc Tran (University of Virginia) and Hesham Elhaddad (Western Michigan University) for their contribution to the workflow. |
+| | I would like to acknowledge Thanh Nhan Duc Tran (University of Virginia), Hesham Elhaddad (Western Michigan University) and Lyn Watts (The University of Massachusetts Amherst)for their contribution to the workflow. |
 
 ### **For More Information**
 Contact <a href="https://geography.ua.edu/people/sagy-cohen/" target="_blank">Dr. Sagy Cohen</a>
