@@ -61,6 +61,8 @@ conda activate OWPHANDFIM
 ```
 Now, you are good to go for jupyter notebook.
 
+If you use this notebook, please cite: Baruah et al. (2024). *OperationalOWPFIM* (Version 1.1) [Source code]. GitHub. https://github.com/sdmlua/OperationalOWPFIM
+
 ### **Acknowledgements**
 | | |
 | --- | --- |
