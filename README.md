@@ -25,7 +25,7 @@ The user need to put the HUC-8 (Hydrologic Unit Code-8) IDs in HUC.csv.
 ```bash
 OperationalOWPFIM/
 ├── code/
-│   └── inundation-mapping/ (contains NOAA OWP HAND model)
+│   └── inundation-mapping/ (contains scripts of the flood model)
 ├── data/
 │   └── inputs/(NWM Discharge value will be saved here in a format of STH_HUC8code)
 ├── outputs/
