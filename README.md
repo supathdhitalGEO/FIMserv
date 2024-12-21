@@ -40,6 +40,17 @@ fimserve/
 ### **Usage**
 To use this code, 
 
+Firstly, It is not mandatory but,
+
+**We strongly suggest user to create a virtual environment and install this package on that virtual environment before using to avoid the conflict between system dependencies and package dependencies.**
+```bash
+#creating a virtual environment using conda
+conda create --name fimserve python==3.10
+
+#Activate environment
+conda activate fimserve
+```
+**OR user can directly install it without virtual environment**
 ```bash
 #Using pip
 pip install fimserve
