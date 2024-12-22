@@ -19,7 +19,7 @@
 ### **Background**
 <hr style="border: 1px solid black; margin: 0;">  
 
-NOAA-Office of Water Predictions (OWP) use HAND FIM model for operational flood forecasting across CONUS (https://github.com/NOAA-OWP/inundation-mapping). It is a terrain based model that uses the Discharge and reach avergaed synthetic rating curves (SRCs) to generate the inundation and depth rasters at HUC-8 scale (Hydrologic Unit Code-8). The model is capable to produce flood maps less than a minute for all order streams within the watershed. The HUC-8 watersheds have catchment area more than 1000 sqkm , that makes this framework scalable and computationaly efficient. It is a fluvial flood model and doesnot have urban flood compponant.The last released version of the model is 4.5and has gone through significant improvements.The present notebook is user freindly and able to run the HAND FIM model from cloud and capable of running mutiple HUC-8s simulteniously.This model can run at any temporal resolution(hourly, daily, monthly etc).It uses the NHDPlus unique river identifiers and assign the streamflow for each of the segment. 
+NOAA-Office of Water Predictions (OWP) use HAND FIM model for operational flood forecasting across CONUS (https://github.com/NOAA-OWP/inundation-mapping). It is a terrain based model that uses the Discharge and reach avergaed synthetic rating curves (SRCs) to generate the inundation and depth rasters at HUC-8 scale (Hydrologic Unit Code-8). The model can produce flood maps for all order streams within the watershed at a very low computational cost . The HUC-8 watersheds have catchment area more than 1000 sqkm , that makes this framework scalable and computationaly efficient. It is a fluvial flood model and doesnot have urban flood compponant.The last released version of the model is 4.5and has gone through significant improvements.The present notebook is user freindly and able to run the HAND FIM model from cloud and capable of running mutiple HUC-8s simulteniously.This model can run using any temporal resolution of streamflow (hourly, daily, monthly etc).It uses the NHDPlus unique river identifiers and assign the streamflow for each of the segment. 
 
 ### **Package structures**
 <hr style="border: 1px solid black; margin: 0;">  
@@ -52,11 +52,8 @@ fimserve/
 ### **Usage**
 <hr style="border: 1px solid black; margin: 0;">  
 
-To use this code, 
-
-Firstly, It is not mandatory but,
-
-**We strongly suggest user to create a virtual environment and install this package on that virtual environment before using to avoid the conflict between system dependencies and package dependencies.**
+Although it is not mandatory but 
+**We strongly recommend users to create a virtual environment and install this package on that virtual environment to avoid the conflict between system dependencies and package dependencies.**
 ```bash
 #creating a virtual environment using conda
 conda create --name fimserve python==3.10
