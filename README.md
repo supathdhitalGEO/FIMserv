@@ -6,6 +6,8 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://opensource.org/licenses/GPL-3.0)
 ![Views](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https://github.com/sdmlua/fimserve&count_bg=%2379C83D&title_bg=%23555555&icon=github.svg&icon_color=%23E7E7E7&title=Views&edge_flat=false)
 [![PyPI version](https://badge.fury.io/py/fimserve.svg)](https://pypi.org/project/fimserve/0.1.62/)
+[![Downloads](https://pepy.tech/badge/fimserve)](https://pepy.tech/project/fimserve)
+
 
 
 ### **Flood Inundation Mapping as a Service (fimserve)**
