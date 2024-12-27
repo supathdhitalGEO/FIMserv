@@ -81,6 +81,8 @@ fm.DownloadHUC8(HUC)    #Like this it contains multiples functionality.
 ```
 Then there are a lot of different modules, call it to work. For reference to run, [Here (docs/code_usage.ipynb)](./docs/code_usage.ipynb) is the sample usuage of this code and different functionality. 
 
+For quick usage: Use google colab. Here is **fimserve  in google colab**: [![Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rwyoHmZJzCdvfn9pK-4csuXg7SVTeG-q?usp=sharing)
+
 
 **Different HUC8 IDs, USGS gauge stations and flowline informations that might be require to further understand/running this framework can be found in this <a href="https://ualabama.maps.arcgis.com/apps/instant/basic/index.html?appid=88789b151b50430d8e840d573225b36b" target="_blank">ArcGIS Instant App</a>.** 
 
