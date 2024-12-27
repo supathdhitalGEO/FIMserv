@@ -9,6 +9,19 @@ from ipywidgets import HTML
 from .datadownload import setup_directories
 
 
+def InitializeGEE(projectID=None):
+    import ee
+
+    try:
+        ee.Authenticate(force=True)
+        if projectID:
+            ee.Initialize(project=projectID)
+        else:
+            ee.Initialize()
+    except Exception as e:
+        print(f"Error initializing GEE: {e}")
+
+
 def FIMVizualizer(raster_path, catchment_gpkg, zoom_level):
     with rasterio.open(raster_path) as src:
         data = src.read(1)
@@ -72,7 +85,7 @@ def FIMVizualizer(raster_path, catchment_gpkg, zoom_level):
     return Map
 
 
-def vizualizeFIM(inundation_raster, huc, zoom_level):
+def vizualizeFIM(inundation_raster, huc, zoom_level, projectID=None):
     code_dir, data_dir, output_dir = setup_directories()
     HUCBoundary = os.path.join(
         output_dir,
@@ -82,4 +95,5 @@ def vizualizeFIM(inundation_raster, huc, zoom_level):
         "0",
         "gw_catchments_reaches_filtered_addedAttributes_0.gpkg",
     )
+    InitializeGEE(projectID)
     return FIMVizualizer(inundation_raster, HUCBoundary, zoom_level)
