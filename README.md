@@ -1,4 +1,4 @@
-# Operational Flood Inundation Mapping(FIM) and Evaluation for CONUS
+# OWP HAND-FIM 'as a service' (FIMserv)
 <hr style="border: 1px solid black; margin: 0;">  
 
 [![Version](https://img.shields.io/github/v/release/sdmlua/fimserve)](https://github.com/sdmlua/fimserve/releases)
@@ -15,13 +15,13 @@
 
 | | |
 | --- | --- |
-| <a href="https://sdml.ua.edu"><img src="https://sdml.ua.edu/wp-content/uploads/2023/01/SDML_logo_Sq_grey.png" alt="SDML Logo" width="300"></a> | This package presents an user friendly and cloud enabled pipeline to generate Operational flood inundation map using NOAA_OWP Height Above Nearest Drainage (HAND) method-FIM model using National Water Model retrospective and forecasted streamflow .It is developed under Surface Dynamics Modeling Lab (SDML). |
+| <a href="https://sdml.ua.edu"><img src="https://sdml.ua.edu/wp-content/uploads/2023/01/SDML_logo_Sq_grey.png" alt="SDML Logo" width="300"></a> | This package presents a streamlined, user-friendly and cloud-enabled pipeline to generate Operational flood inundation map using the NOAA Office of Water Prediction (OWP) Height Above Nearest Drainage (HAND) Flood Inundation MApping (FIM) framework using the National Water Model retrospective and forecasted streamflow. It is developed under the Surface Dynamics Modeling Lab (SDML) as part of a project funded by the Cooperative Institute for Research to Operations in Hydrology (CIROH). |
 
 
 ### **Background**
 <hr style="border: 1px solid black; margin: 0;">  
 
-NOAA-Office of Water Predictions (OWP) use HAND FIM model for operational flood forecasting across CONUS (https://github.com/NOAA-OWP/inundation-mapping). It is a terrain based model that uses the Discharge and reach avergaed synthetic rating curves (SRCs) to generate the inundation and depth rasters at HUC-8 scale (Hydrologic Unit Code-8). The model can produce flood maps for all order streams within the watershed at a very low computational cost . The HUC-8 watersheds have catchment area more than 1000 sqkm , that makes this framework scalable and computationaly efficient. It is a fluvial flood model and doesnot have urban flood compponant.The last released version of the model is 4.5and has gone through significant improvements.The present notebook is user freindly and able to run the HAND FIM model from cloud and capable of running mutiple HUC-8s simulteniously.This model can run using any temporal resolution of streamflow (hourly, daily, monthly etc).It uses the NHDPlus unique river identifiers and assign the streamflow for each of the segment. 
+OWP HAND-FIM is a national-scale operational flood forecasting framework (https://github.com/NOAA-OWP/inundation-mapping). It is a terrain-based fluvial flooding model that uses model-predicted streamflow and reach-averaged Synthetic Rating Curves (SRCs) to generate inundation extent and depth rasters at HUC-8 scale (Hydrologic Unit Code-8). The model can produce FIMs for all order streams within the watershed at a very low computational cost. This notebook streamline the FIM generation process or the OWP HAND-FIM framework on the cloud. It allow users to run over mutiple HUC-8s simultaneously. This model can run using any temporal resolution available from the input streamflow data (hourly, daily, monthly etc). 
 
 ### **Package structures**
 <hr style="border: 1px solid black; margin: 0;">  
