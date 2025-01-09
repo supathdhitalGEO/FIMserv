@@ -46,16 +46,16 @@ fimserve/
             ├── vizualization.py (In the Local jupyter notebook, it can be used to vizualize the user defined any inundation file interactively.)
 └── tests/(includes test cases for each functionality)
 ```
-**Following is the whole structure of the framework consisting its applications and connection between different functionalities.** The right one one i.e, **b)** is the directory structure once you use this package (for eg. after using this code by following [docs/code_usage.ipynb](./docs/code_usage.ipynb)) to download and process one or multiple hucs. 
+**The structure of the framework consisting its applications and connection between different functionalities.** The right figure, **b)**, is the directory structure used in this package (for e.g. after using this code by following [docs/code_usage.ipynb](./docs/code_usage.ipynb)) to download and process one or multiple hucs. 
 
 <img src="https://github.com/supathdhitalGEO/fimserve/blob/main/images/flowchart.jpg"/>
 
-<em>Figure: Flow chart of the framework a) complete workflow demonstrating how framework is designed b) the directory structure on user end when user run code.</em>
+<em>Figure: Flow chart of the framework (a) complete workflow demonstrating how the framework is designed, and (b) the directory structure on the user's end after runing the code.</em>
 ### **Usage**
 <hr style="border: 1px solid black; margin: 0;">  
 
-Although it is not mandatory but 
-**We strongly recommend users to create a virtual environment and install this package on that virtual environment to avoid the conflict between system dependencies and package dependencies.**
+Although not mandatory, 
+**we strongly recommend users create a virtual environment and install this package on that virtual environment to avoid the conflict between system dependencies and package dependencies.**
 ```bash
 #creating a virtual environment using conda
 conda create --name fimserve python==3.10
@@ -63,7 +63,7 @@ conda create --name fimserve python==3.10
 #Activate environment
 conda activate fimserve
 ```
-**OR user can directly install it without virtual environment**
+**OR user can directly install it without a virtual environment**
 ```bash
 #Using pip
 pip install fimserve
@@ -72,19 +72,19 @@ pip install fimserve
 poetry add fimserve
 ```
 
-Once it installed, import it like 
+Once it is installed, import it like 
 ```bash
 import fimserve as fm
 
 #to download HUC8
 fm.DownloadHUC8(HUC)    #Like this it contains multiples functionality.
 ```
-Then there are a lot of different modules, call it to work. For reference to run, [Here (docs/code_usage.ipynb)](./docs/code_usage.ipynb) is the sample usuage of this code and different functionality. 
+Then there are a lot of different modules, call it to work. For reference to run, [Here (docs/code_usage.ipynb)](./docs/code_usage.ipynb) is the sample usage of this code and different functionality. 
 
-For quick usage: Use google colab. Here is **fimserve  in google colab**: [![Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rwyoHmZJzCdvfn9pK-4csuXg7SVTeG-q?usp=sharing)
+For quick usage: Use Google Colab. Here is **fimserve  in google colab**: [![Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rwyoHmZJzCdvfn9pK-4csuXg7SVTeG-q?usp=sharing)
 
 
-**Different HUC8 IDs, USGS gauge stations and flowline informations that might be require to further understand/running this framework can be found in this <a href="https://ualabama.maps.arcgis.com/apps/instant/basic/index.html?appid=88789b151b50430d8e840d573225b36b" target="_blank">ArcGIS Instant App</a>.** 
+**Different HUC8 IDs, USGS gauge stations and flowline information that might be required to further understand/running this framework can be found in this <a href="https://ualabama.maps.arcgis.com/apps/instant/basic/index.html?appid=88789b151b50430d8e840d573225b36b" target="_blank">ArcGIS Instant App</a>.** 
 
  
 ### **Acknowledgements**
