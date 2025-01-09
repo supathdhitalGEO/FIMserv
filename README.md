@@ -1,4 +1,4 @@
-# OWP HAND-FIM 'as a service' (FIMserv)
+# Flood Inundation Mapping Tool using the OWP HAND-FIM operational faremwork
 <hr style="border: 1px solid black; margin: 0;">  
 
 [![Version](https://img.shields.io/github/v/release/sdmlua/fimserve)](https://github.com/sdmlua/fimserve/releases)
@@ -10,7 +10,7 @@
 
 
 
-### **Flood Inundation Mapping as a Service (fimserve)**
+### **OWP HAND-FIM 'as a service' (FIMserv)**
 <hr style="border: 1px solid black; margin: 0;">  
 
 | | |
