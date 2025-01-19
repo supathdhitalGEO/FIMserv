@@ -79,7 +79,7 @@ import fimserve as fm
 #to download HUC8
 fm.DownloadHUC8(HUC)    #Like this it contains multiples functionality.
 ```
-Then there are a lot of different modules, call it to work. For reference to run, [Here (docs/code_usage.ipynb)](./docs/code_usage.ipynb) is the sample usage of this code and different functionality. 
+Then there are a lot of different modules, call it to work. For reference to run, [Here (docs/code_usage.ipynb)](./docs/code_usage.ipynb) is the sample usage of this code and different functionality in detailed and to generate FIM only, follow this shorter, FIM in 3 steps version [Here (docs/FIMin3steps.ipynb)](./docs/FIMin3steps.ipynb). 
 
 For quick usage: Use Google Colab. Here is **fimserve  in google colab**: [![Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rwyoHmZJzCdvfn9pK-4csuXg7SVTeG-q?usp=sharing)
 
