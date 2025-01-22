@@ -1,4 +1,4 @@
-# Flood Inundation Mapping Tool using the OWP HAND-FIM operational faremwork
+# Flood Inundation Mapping Tool using the OWP HAND-FIM operational framework
 <hr style="border: 1px solid black; margin: 0;">  
 
 [![Version](https://img.shields.io/github/v/release/sdmlua/fimserve)](https://github.com/sdmlua/fimserve/releases)
