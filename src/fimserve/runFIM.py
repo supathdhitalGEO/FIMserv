@@ -23,7 +23,7 @@ def runfim(code_dir, output_dir, HUC_code, data_dir):
         csv_path = data_dir
 
         # Get the inundation file path
-        discharge_basename = os.path.basename(data_dir).split("_")[0]
+        discharge_basename = os.path.basename(data_dir).split(".")[0]
         inundation_file = os.path.join(
             HUC_dir, f"{HUC_code}_inundation/{discharge_basename}_inundation.tif"
         )
@@ -67,7 +67,6 @@ def runfim(code_dir, output_dir, HUC_code, data_dir):
 
 def runOWPHANDFIM(huc):
     code_dir, data_dir, output_dir = setup_directories()
-    discharge = os.path.join(data_dir, f"*_{huc}.csv")
-    files = glob.glob(discharge)
-    for file in files:
+    discharge = glob.glob(os.path.join(data_dir, f"*{huc}*.csv"))
+    for file in discharge:
         runfim(code_dir, output_dir, huc, file)

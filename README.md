@@ -76,7 +76,7 @@ poetry add fimserve
 
 **FIM generation only in 3 steps using fimserve framework**
 
-This framework have multiple other funtionalities, but the most important is t generate the FIM. The following step is the standard way to generate FIM using OWP Operation FIM framework with FIMserv. This is just a quick 3 steps for one huc and one event, user can use this framework as many case and event as per thier requirement.
+This framework have multiple other funtionalities, but the most important is to generate the FIM. The following step is the standard way to generate FIM using OWP Operation FIM framework with FIMserv. This is just a quick 3 steps for one huc and one event, user can use this framework as many case and event as per thier requirement.
 
 ```bash
 #Import framework once it is installed in your workflows
