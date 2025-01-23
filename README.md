@@ -1,11 +1,11 @@
 # Flood Inundation Mapping Tool using the OWP HAND-FIM operational framework
 <hr style="border: 1px solid black; margin: 0;">  
 
-[![Version](https://img.shields.io/github/v/release/sdmlua/fimserve)](https://github.com/sdmlua/fimserve/releases)
-[![Issues](https://img.shields.io/github/issues/sdmlua/fimserve)](https://github.com/sdmlua/fimserve/issues)
+[![Version](https://img.shields.io/github/v/release/sdmlua/FIMserv)](https://github.com/sdmlua/FIMserv/releases)
+[![Issues](https://img.shields.io/github/issues/sdmlua/FIMserv)](https://github.com/sdmlua/FIMserv/issues)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://opensource.org/licenses/GPL-3.0)
-![Views](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https://github.com/sdmlua/fimserve&count_bg=%2379C83D&title_bg=%23555555&icon=github.svg&icon_color=%23E7E7E7&title=Views&edge_flat=false)
-[![PyPI version](https://badge.fury.io/py/fimserve.svg)](https://badge.fury.io/py/fimserve)
+[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fsdmlua%2FFIMserv&count_bg=%231A93AE&title_bg=%23E48A8A&icon=clyp.svg&icon_color=%23E7E7E7&title=Views&edge_flat=false)](https://hits.seeyoufarm.com)
+[![PyPI version](https://badge.fury.io/py/fimserve.svg?icon=si%3Apython)](https://badge.fury.io/py/fimserve)
 [![PyPI Downloads](https://static.pepy.tech/badge/fimserve)](https://pepy.tech/projects/fimserve)
 
 
@@ -15,7 +15,7 @@
 
 | | |
 | --- | --- |
-| <a href="https://sdml.ua.edu"><img src="https://sdml.ua.edu/wp-content/uploads/2023/01/SDML_logo_Sq_grey.png" alt="SDML Logo" width="300"></a> | This package presents a streamlined, user-friendly and cloud-enabled pipeline to generate Operational flood inundation map using the NOAA Office of Water Prediction (OWP) Height Above Nearest Drainage (HAND) Flood Inundation MApping (FIM) framework using the National Water Model retrospective and forecasted streamflow. It is developed under the Surface Dynamics Modeling Lab (SDML) as part of a project funded by the Cooperative Institute for Research to Operations in Hydrology (CIROH). |
+| <a href="https://sdml.ua.edu"><img src="https://sdml.ua.edu/wp-content/uploads/2023/01/SDML_logo_Sq_grey.png" alt="SDML Logo" width="400"></a> | This package presents a streamlined, user-friendly and cloud-enabled pipeline to generate Operational flood inundation map using the NOAA Office of Water Prediction (OWP) Height Above Nearest Drainage (HAND) Flood Inundation MApping (FIM) framework using the National Water Model retrospective and forecasted streamflow. It is developed under the Surface Dynamics Modeling Lab (SDML) as part of a project funded by the Cooperative Institute for Research to Operations in Hydrology (CIROH). |
 
 
 ### **Background**
@@ -26,32 +26,34 @@ OWP HAND-FIM is a national-scale operational flood forecasting framework (https:
 ### **Package structures**
 <hr style="border: 1px solid black; margin: 0;">  
 
-This version ([![Version](https://img.shields.io/github/v/release/sdmlua/fimserve)](https://github.com/sdmlua/fimserve/releases)) of code is available on [PyPI](https://pypi.org/project/fimserve/0.1.62/).
+This FIMserv framework is published as python package and published on [PyPI](https://pypi.org/project/fimserve/0.1.62/) [![PyPI version](https://badge.fury.io/py/fimserve.svg?icon=si%3Apython)](https://badge.fury.io/py/fimserve). It contains multiple modules to perform different functionalities which are structured into the fimserve folder while development of python packaging.
 ```bash
-fimserve/
-├── docs/(contain the code usage))
-├── GeoGLOWS/(contain the streamflow download using GeoGLOWS hydrofabrics))
-├── src/fimserve/
-│           ├── streamflowdata/
-                ├── nwmretrospectivedata.py
-                └── forecasteddata.py
-│           ├── plots/ (Contains different plotting functionality)
-            ├── FIMsubset/
-                ├── xycoord.py
-                └── shpsubset.py
-            ├── statistics/
-                ├── calculatestatistics.py (calculates statistics between NWM and USGS gauge data)
-            ├── datadownload.py (Includes all HUC8 raster things)
-            ├── runFIM.py (OWPHAND model)
-            ├── vizualization.py (In the Local jupyter notebook, it can be used to vizualize the user defined any inundation file interactively.)
-└── tests/(includes test cases for each functionality)
+FIMserv/
+├── docs/                   # Documentation (contains 'FIMserv' Tool usage sample codes)
+├── GeoGLOWS/               # Streamflow download using GeoGLOWS hydrofabrics
+├── src/
+│   └── fimserve/         
+│       ├── streamflowdata/ # Handles streamflow data
+│       │   ├── nwmretrospectivedata.py   # Processes NWM retrospective data
+│       │   └── forecasteddata.py        # Processes all range forecasted streamflow data
+│       ├── plots/          # Vizualization functionalities
+│       ├── FIMsubset/      # Subsetting functionalities for FIM
+│       │   ├── xycoord.py  # Subset using Lat, Lon 
+│       │   └── shpsubset.py # Subset using boundary
+│       ├── statistics/     # Statistical analysis
+│       │   └── calculatestatistics.py  # Statistical analysis between NWM and USGS gauge data
+│       ├── datadownload.py # Includes HUC8 data retrival and folder management module
+│       ├── runFIM.py       # OWPHAND model execution
+│       ├── vizualization.py # Interactive visualization of user-defined inundation files (in Jupyter Notebook)
+└── tests/                  # Includes test cases for different functionality
+
 ```
 **The structure of the framework consisting its applications and connection between different functionalities.** The right figure, **b)**, is the directory structure used in this package (for e.g. after using this code by following [docs/code_usage.ipynb](./docs/code_usage.ipynb)) to download and process one or multiple hucs. 
 
-<img src="https://github.com/supathdhitalGEO/fimserve/blob/main/images/flowchart.jpg"/>
+<img src="./images/flowchart.jpg" alt="Flowchart" style="border: 1px solid black; padding: 1px;">
 
-<em>Figure: Flow chart of the framework (a) complete workflow demonstrating how the framework is designed, and (b) the directory structure on the user's end after runing the code.</em>
-### **Usage**
+<em>Fig. (a)A complete workflow demonstrating the framework architecture, and (b) directory structure as it appears on the user's system after using the FIMserv for FIM generation.</em>
+### **Tool Usage**
 <hr style="border: 1px solid black; margin: 0;">  
 
 Although not mandatory, 
@@ -63,23 +65,52 @@ conda create --name fimserve python==3.10
 #Activate environment
 conda activate fimserve
 ```
-**OR user can directly install it without a virtual environment**
+**Install or add fimserve into your workflows**
 ```bash
 #Using pip
 pip install fimserve
 
-#OR add using poetry to your framework deployment
+#OR add using poetry to your framework development for quick FIM generation
 poetry add fimserve
 ```
 
-Once it is installed, import it like 
+**FIM generation only in 3 steps using fimserve framework**
+
+This framework have multiple other funtionalities, but the most important is to generate the FIM. The following step is the standard way to generate FIM using OWP Operation FIM framework with FIMserv. This is just a quick 3 steps for one huc and one event, user can use this framework as many case and event as per thier requirement.
+
 ```bash
+#Import framework once it is installed in your workflows
 import fimserve as fm
 
-#to download HUC8
-fm.DownloadHUC8(HUC)    #Like this it contains multiples functionality.
+# Initialize necessary variables
+huc = "03020202"        #HUC8 ID
+start_date = "2016-10-08"   #Start date of the streamflow data
+end_date = "2016-10-10"     #End date of the streamflow data
+
+value_time = ["2016-10-09 03:00:00"]   #Time of the streamflow data user want to generate FIM within start_date and end_date
 ```
-Then there are a lot of different modules, call it to work. For reference to run, [Here (docs/code_usage.ipynb)](./docs/code_usage.ipynb) is the sample usage of this code and different functionality in detailed and to generate FIM only, follow this shorter, FIM in 3 steps version [Here (docs/FIMin3steps.ipynb)](./docs/FIMin3steps.ipynb). 
+**Step 1. Download HUC8 data**
+
+OWP HAND FIM model runs at HUC-8 watershed scale. User need to identify the HUC8 ID for their specific region of interest. In this example we are using the Neuse River Flooding in North Carolina from Hurricane Mathhew,2016. The HUC8 id is 03020202. The locations and informations about the HUC8 IDs are available here in: **<a href="https://ualabama.maps.arcgis.com/apps/instant/basic/index.html?appid=88789b151b50430d8e840d573225b36b" target="_blank">ArcGIS Instant App</a>**.
+
+```bash
+fm.DownloadHUC8(huc)    #Download the HUC8 data
+```
+**Step 2. Get the NWM Streamflow data**
+
+Users can retrieve NWM forecasted and retrospective data for a specified date range (start date to end date). Additionally, they can store streamflow data for a specific date, as defined by value_times, during the initialization process to generate FIM.
+```bash
+fm.getNWMretrospectivedata(start_date, end_date, huc, value_time)
+```
+**Step 3. Generate the Flood Inundation Mapping**
+
+This functionality automatically uses the recently downloaded and stored streamflow to generate FIM. This automation is based on the HUCID.
+
+```bash
+fm.runOWPHANDFIM(huc)       #Run the OWP-HAND FIM with the NWM retrospective streamflow data
+```
+
+Then there are a lot of different modules/funtionalities related to Syntetic Rating Curve (SRCs) analysis, NWM and USGS streamflow Evaluation, Subsetting of FIM, Domain filtering etc. For reference to run, [Here (docs/code_usage.ipynb)](./docs/code_usage.ipynb) is the sample usage of this FIMserv tool and which covers all modules in detailed and to generate FIM only, follow this shorter, FIM in 3 steps version [Here (docs/FIMin3steps.ipynb)](./docs/FIMin3steps.ipynb). 
 
 For quick usage: Use Google Colab. Here is **fimserve  in google colab**: [![Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rwyoHmZJzCdvfn9pK-4csuXg7SVTeG-q?usp=sharing)
 

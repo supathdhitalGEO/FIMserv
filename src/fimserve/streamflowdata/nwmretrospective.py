@@ -65,7 +65,15 @@ def getnwm_discharge(
 ):
     output_dir = Path(output_root) / "discharge" / f"{nwm_version}_retrospective"
     output_dir.mkdir(parents=True, exist_ok=True)
+    
+    formatted_filename = f"{start_date.replace('-', '')}_{end_date.replace('-', '')}.parquet"
+    file_path = output_dir / formatted_filename
 
+    # Check if the file already exists
+    if file_path.exists():
+        print(f"Discharge file already exists in {file_path}, skipping download and getting streamflow for valuetimes")
+        return
+    
     location_ids_df = pd.read_csv(fids)
     location_ids = location_ids_df["feature_id"].tolist()
 
