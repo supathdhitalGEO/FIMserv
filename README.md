@@ -76,7 +76,7 @@ poetry add fimserve
 
 **FIM generation only in 3 steps using fimserve framework**
 
-This framework have multiple other funtionalities, but the most important is to generate the FIM. The following step is the standard way to generate FIM using OWP Operation FIM framework with FIMserv. This is just a quick 3 steps for one huc and one event, user can use this framework as many case and event as per thier requirement.
+This framework have multiple other funtionalities, but the most important is to generate the FIM. The following step is the standard way to generate FIM using OWP Operation FIM framework with FIMserv. This is just a quick 3 steps for one huc and one event, user can use this framework as many case and event as per thier requirement. The google colab version of **FIMin3Steps is here**- [![Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1LLagzuLKTDu3WzwjqRoIgnn2iiAveU2f?usp=sharing) 
 
 ```bash
 #Import framework once it is installed in your workflows
@@ -112,7 +112,7 @@ fm.runOWPHANDFIM(huc)       #Run the OWP-HAND FIM with the NWM retrospective str
 
 Then there are a lot of different modules/funtionalities related to Syntetic Rating Curve (SRCs) analysis, NWM and USGS streamflow Evaluation, Subsetting of FIM, Domain filtering etc. For reference to run, [Here (docs/code_usage.ipynb)](./docs/code_usage.ipynb) is the sample usage of this FIMserv tool and which covers all modules in detailed and to generate FIM only, follow this shorter, FIM in 3 steps version [Here (docs/FIMin3steps.ipynb)](./docs/FIMin3steps.ipynb). 
 
-For quick usage: Use Google Colab. Here is **fimserve  in google colab**: [![Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rwyoHmZJzCdvfn9pK-4csuXg7SVTeG-q?usp=sharing)
+Use Google Colab. Here is **Detailed code Usage of FIMserv in Google Colab**: [![Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1mAjgkkCvR3Tcbdz48SwlkHmEo1GZvsh7?usp=sharing)
 
 
 **Different HUC8 IDs, USGS gauge stations and flowline information that might be required to further understand/running this framework can be found in this <a href="https://ualabama.maps.arcgis.com/apps/instant/basic/index.html?appid=88789b151b50430d8e840d573225b36b" target="_blank">ArcGIS Instant App</a>.** 
