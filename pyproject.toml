@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fimserve"
-version = "0.1.62"
+version = "0.1.69"
 description = "Framework which is developed with the purpose of quickly generating Flood Inundation Maps (FIM) for emergency response and risk assessment. It is developed under Surface Dynamics Modeling Lab (SDML)."
 authors = ["Supath Dhital <sdhital@crimson.ua.edu>"]
 license = "GPL-3.0"
@@ -36,6 +36,8 @@ python-dotenv = "^1.0.1"
 jupyter = "^1.1.1"
 notebook = "^7.3.1"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
 
 [build-system]
 requires = ["poetry-core"]
