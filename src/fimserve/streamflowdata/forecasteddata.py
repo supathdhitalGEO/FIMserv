@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 import requests
 import pandas as pd
 from pathlib import Path
@@ -9,6 +10,14 @@ from bs4 import BeautifulSoup
 
 from ..datadownload import setup_directories
 
+def adjust_hour(hour, forecast_range):
+    if forecast_range == "shortrange":
+        return min(hour, 23) 
+    elif forecast_range in ["mediumrange", "longrange"]:
+        valid_hours = [0, 6, 12, 18]
+        adjusted_hour = max(h for h in valid_hours if h <= hour)
+        return adjusted_hour
+    return hour
 
 def download_nc_files(date_str, current_hour, download_dir, url_base, forecast_range):
     date_obj = datetime.strptime(date_str, "%Y%m%d")
@@ -84,10 +93,8 @@ def download_public_file(url, destination_path):
     with open(destination_path, "wb") as f:
         f.write(response.content)
 
-
-# %%
 # Process netcf and get the file in CSV format and extract all feature_is's discharge data
-def process_netcdf_file(netcdf_file_path, filter_df, output_folder_path):
+def processnetCDF(netcdf_file_path, filter_df, output_folder_path):
     base_filename = os.path.basename(netcdf_file_path).replace(".nc", "")
     output_csv_file_path = os.path.join(output_folder_path, f"{base_filename}.csv")
 
@@ -109,10 +116,95 @@ def process_netcdf_file(netcdf_file_path, filter_df, output_folder_path):
     filtered_df = data_df[data_df["feature_id"].isin(filter_df["feature_id"])]
     merged_df = pd.merge(filter_df[["feature_id"]], filtered_df, on="feature_id")
     merged_df.to_csv(output_csv_file_path, index=False)
-    # print(f'Filtered DataFrame saved to {output_csv_file_path}')
 
+def ProcessForecasts(CSVFILES, forecast_date, hour, forecast_range, sort_by, data_dir):
+    merge_folder = os.path.join(CSVFILES, "mergedAndSorted")
+    os.makedirs(merge_folder, exist_ok=True)
 
-# %%
+    # Get all CSV files in the output folder
+    if forecast_range == "longrange":
+        csv_files = sorted(
+            [
+                file
+                for file in os.listdir(CSVFILES)
+                if file.endswith(".csv") and file.startswith(f"nwm.t{hour:02d}z.long_range")
+                
+            ]
+        )  
+    elif forecast_range == "mediumrange":
+        csv_files = sorted(
+            [
+                file
+                for file in os.listdir(CSVFILES)
+                if file.endswith(".csv") and file.startswith(f"nwm.t{hour:02d}z.medium_range")
+            ]
+        )
+        
+    elif forecast_range == "shortrange":
+        csv_files = sorted(
+            [
+                file
+                for file in os.listdir(CSVFILES)
+                if file.endswith(".csv") and file.startswith(f"nwm.t{hour:02d}z.short_range")
+            ]
+        )
+        # Process each file for shortrange
+        pattern = re.compile(r"\.f(\d{3})\.")
+        current_date = datetime.strptime(forecast_date, "%Y%m%d")
+        base_hour = hour  
+        day_shift = 0 
+
+        for csv_file in csv_files:
+            match = pattern.search(csv_file)
+            if match:
+                forecast_hour = int(match.group(1))
+                adjusted_forecast_hour = base_hour + forecast_hour
+                if adjusted_forecast_hour >= 24:
+                    adjusted_forecast_hour %= 24
+                    if adjusted_forecast_hour == 0: 
+                        day_shift += 1
+                adjusted_date = (current_date + timedelta(days=day_shift)).strftime("%Y%m%d")
+
+                sorted_file_name = f"{forecast_range}_{adjusted_date}_{adjusted_forecast_hour:02d}UTC.csv"
+                sorted_file_path = os.path.join(data_dir, sorted_file_name)
+                original_file_path = os.path.join(CSVFILES, csv_file)
+                os.rename(original_file_path, sorted_file_path)
+        return
+
+    # Calculating the day offset based on the forecast hour
+    pattern = re.compile(r"\.f(\d{3})\.")
+    current_date = datetime.strptime(forecast_date, "%Y%m%d")
+    daily_groups = {}
+
+    for csv_file in csv_files:
+        match = pattern.search(csv_file)
+        if match:
+            forecast_hour = int(match.group(1)) 
+            day_offset = (forecast_hour + hour) // 24
+            group_date = (current_date + timedelta(days=day_offset)).strftime("%Y%m%d")
+
+            if group_date not in daily_groups:
+                daily_groups[group_date] = []
+            daily_groups[group_date].append(csv_file)
+        else:
+            print(f"Filename does not match expected pattern: {csv_file}")
+
+    # Merge and sort files for each day
+    for group_date, group_files in daily_groups.items():
+        combined_df = pd.concat(
+            [pd.read_csv(os.path.join(CSVFILES, file)) for file in group_files]
+        )
+        if sort_by == "minimum":
+            sorted_df = combined_df.groupby("feature_id")["discharge"].min().reset_index()
+        elif sort_by == "median":
+            sorted_df = combined_df.groupby("feature_id")["discharge"].median().reset_index()
+        else: 
+            sorted_df = combined_df.groupby("feature_id")["discharge"].max().reset_index()
+
+        sorted_file_name = f"{hour:02d}UTC_{forecast_range}_{group_date}.csv"
+        sorted_file_path = os.path.join(data_dir, sorted_file_name)
+        sorted_df.to_csv(sorted_file_path, index=False)
+        
 def main(
     download_dir,
     output_csv_filename,
@@ -125,14 +217,18 @@ def main(
     sort_by="maximum",
     url_base="https://storage.googleapis.com/national-water-model",
 ):
-    if not hour:
-        hour = datetime.utcnow().hour
-
     if forecast_date:
         date_obj = datetime.strptime(forecast_date, "%Y-%m-%d")
         forecast_date = date_obj.strftime("%Y%m%d")
     else:
         forecast_date = datetime.utcnow().strftime("%Y%m%d")
+
+    if hour is None:
+        hour = datetime.utcnow().hour
+
+    # Adjust the hour based on the forecast range
+    hour = adjust_hour(hour, forecast_range)
+
     print(f"Downloading forecast data for {forecast_date} at {hour:02d}Z")
 
     success = False
@@ -144,17 +240,23 @@ def main(
             forecast_date, hour, download_dir, url_base, forecast_range
         )
         if not success:
-            current_hour = (hour - 1) % 24
-            if current_hour == 23:
-                today = (datetime.utcnow() - timedelta(days=1)).strftime("%Y%m%d")
-
-    if not success:
-        print("No recent forecast data found. Exiting.")
+            hour = (hour - 1) % 24
+            if hour == 23:
+                forecast_date = (datetime.utcnow() - timedelta(days=1)).strftime(
+                    "%Y%m%d"
+                )
+    # Check if there are any .nc files
+    if not any(file.endswith(".nc") for file in os.listdir(date_output_dir)):
+        print("No discharge data found, try few hours or a day back!")
+        try:
+            shutil.rmtree(download_dir)
+        except Exception as e:
+            print(f"Error removing CSV files directory: {e}")
         return
-
+    
     filter_csv_file_path = os.path.join(output_dir, output_csv_filename)
-    output_folder_path = os.path.join(download_dir, "csvFiles")
-    os.makedirs(output_folder_path, exist_ok=True)
+    CSVFILES = os.path.join(download_dir, "csvFiles")
+    os.makedirs(CSVFILES, exist_ok=True)
     filter_df = pd.read_csv(filter_csv_file_path)
 
     if os.path.exists(date_output_dir):
@@ -162,62 +264,16 @@ def main(
             for filename in files:
                 if filename.endswith(".nc"):
                     netcdf_file_path = os.path.join(root, filename)
-                    process_netcdf_file(netcdf_file_path, filter_df, output_folder_path)
+                    processnetCDF(netcdf_file_path, filter_df, CSVFILES)
 
-    csv_directory = output_folder_path
-    csv_files = [file for file in os.listdir(csv_directory) if file.endswith(".csv")]
-
-    if not csv_files:
-        print("No CSV files found after processing NetCDF files.")
-        return
-
-    combined_df = pd.concat(
-        [
-            pd.read_csv(os.path.join(csv_directory, file))[["feature_id", "discharge"]]
-            for file in csv_files
-        ]
-    )
-
-    combined_df = (
-        combined_df.pivot_table(index="feature_id", values="discharge", aggfunc=list)
-        .apply(pd.Series.explode)
-        .reset_index()
-    )
-    combined_df["discharge"] = combined_df["discharge"].astype(float)
-    combined_df = (
-        combined_df.groupby("feature_id")["discharge"].apply(list).reset_index()
-    )
-
-    discharge_values = pd.DataFrame(
-        combined_df["discharge"].tolist(), index=combined_df.index
-    )
-    discharge_values.columns = [
-        f"discharge_{i+1}" for i in range(discharge_values.shape[1])
-    ]
-
-    combined_df = pd.concat(
-        [combined_df.drop(columns=["discharge"]), discharge_values], axis=1
-    )
-    output_file = os.path.join(download_dir, "combined_streamflow.csv")
-    combined_df.to_csv(output_file, index=False)
-
-    if sort_by == "minimum":
-        discharge_stat_df = (
-            combined_df.set_index("feature_id").min(axis=1).reset_index()
-        )
-    elif sort_by == "median":
-        discharge_stat_df = (
-            combined_df.set_index("feature_id").median(axis=1).reset_index()
-        )
-    else:
-        discharge_stat_df = (
-            combined_df.set_index("feature_id").max(axis=1).reset_index()
-        )
-
-    discharge_stat_df.columns = ["feature_id", "discharge"]
-    output_file = os.path.join(data_dir, f"{forecast_range}_{HUC}.csv")
-    discharge_stat_df.to_csv(output_file, index=False)
-    print(f"The final discharge values saved to {output_file}")
+    #Merge and sort the csv data in daily basis for long range and medium range where as gives hourly streamflow for short range
+    if forecast_range=='longrange' or forecast_range=='mediumrange' or forecast_range=='shortrange':
+        ProcessForecasts(CSVFILES, forecast_date, hour, forecast_range, sort_by, data_dir)
+        print(f"The final discharge values saved to {data_dir}")
+        try:
+            shutil.rmtree(CSVFILES)
+        except Exception as e:
+            print(f"Error removing CSV files directory: {e}")
 
 
 def getNWMForecasteddata(
