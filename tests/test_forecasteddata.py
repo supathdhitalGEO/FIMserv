@@ -17,5 +17,4 @@ fm.getNWMForecasteddata(
 # By default the data will be filtered based on maximum discharge value
 # Otherwise user need to mention
 
-# fm.getNWMForecasteddata(huc, forecast_range="shortrange", sort_by="maximum")
 # fm.getNWMForecasteddata(huc, forecast_range="longrange", sort_by="minimum")
