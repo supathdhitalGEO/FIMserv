@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 from .datadownload import setup_directories
 
+
 def runfim(code_dir, output_dir, HUC_code, data_dir):
     original_dir = os.getcwd()
     try:
@@ -29,10 +30,8 @@ def runfim(code_dir, output_dir, HUC_code, data_dir):
 
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
-        
-        inundation_file = os.path.join(
-            temp_dir, f"{discharge_basename}_inundation.tif"
-        )
+
+        inundation_file = os.path.join(temp_dir, f"{discharge_basename}_inundation.tif")
         # depth_file = os.path.join(
         #     temp_dir, f"{discharge_basename}_depth.tif"
         # )
@@ -62,7 +61,7 @@ def runfim(code_dir, output_dir, HUC_code, data_dir):
             stderr=subprocess.PIPE,
         )
 
-          # Print the output and error (if any)
+        # Print the output and error (if any)
         print(result.stdout.decode())
         if result.stderr:
             print(result.stderr.decode())
