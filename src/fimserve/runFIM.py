@@ -1,6 +1,7 @@
 import os
 import sys
 import glob
+import shutil
 import subprocess
 from dotenv import load_dotenv
 
@@ -24,9 +25,16 @@ def runfim(code_dir, output_dir, HUC_code, data_dir):
 
         # Get the inundation file path
         discharge_basename = os.path.basename(data_dir).split(".")[0]
-        inundation_file = os.path.join(
-            HUC_dir, f"{HUC_code}_inundation/{discharge_basename}_inundation.tif"
-        )
+        inundation_dir = os.path.join(HUC_dir, f"{HUC_code}_inundation")
+        temp_dir = os.path.join(inundation_dir, "temp")
+
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+
+        inundation_file = os.path.join(temp_dir, f"{discharge_basename}_inundation.tif")
+        # depth_file = os.path.join(
+        #     temp_dir, f"{discharge_basename}_depth.tif"
+        # )
 
         Command = [
             sys.executable,
@@ -39,6 +47,8 @@ def runfim(code_dir, output_dir, HUC_code, data_dir):
             csv_path,
             "-i",
             inundation_file,
+            # "-d",
+            # depth_file,
         ]
         env = os.environ.copy()
         env["PYTHONPATH"] = f"{src_path}{os.pathsep}{code_dir}"
@@ -55,9 +65,21 @@ def runfim(code_dir, output_dir, HUC_code, data_dir):
         print(result.stdout.decode())
         if result.stderr:
             print(result.stderr.decode())
+
         # Check if the command was successful
         if result.returncode == 0:
             print(f"Inundation mapping for {HUC_code} completed successfully.")
+
+            # Move the generated files to inundation_dir
+            # if os.path.exists(inundation_file) and os.path.exists(depth_file):
+            if os.path.exists(inundation_file):
+                shutil.move(inundation_file, inundation_dir)
+                # shutil.move(depth_file, inundation_dir)
+
+            # Delete the temp directory
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+
         else:
             print(f"Failed to complete inundation mapping for {HUC_code}.")
 

@@ -6,7 +6,7 @@ import subprocess
 
 def setup_directories():
     parent_dir = os.getcwd()
-    code_dir = os.path.join(parent_dir, "code", "inunation-mapping")
+    code_dir = os.path.join(parent_dir, "code", "inundation-mapping")
     data_dir = os.path.join(parent_dir, "data", "inputs")
     output_dir = os.path.join(parent_dir, "output")
 
@@ -52,31 +52,65 @@ def download_data(huc_number, base_dir):
     fim_inputs_path = os.path.join(base_dir, f"flood_{huc_number}", "fim_inputs.csv")
 
     # Read the first row from branch_ids.csv
-    with open(hydrotable_path, "r") as infile:
+    with open(hydrotable_path, "r") as infile, open(
+        fim_inputs_path, "w", newline=""
+    ) as outfile:
         reader = csv.reader(infile)
-        first_row = next(reader)  # Get the first row
-
-    # Write the first row to fim_inputs.csv
-    with open(fim_inputs_path, "w", newline="") as outfile:
         writer = csv.writer(outfile)
-        writer.writerow(first_row)
+        for row in reader:
+            writer.writerow(row)
 
-    print(
-        f"Copied the first row of {hydrotable_path} to {fim_inputs_path} as fim_inputs.csv."
-    )
+    print(f"Copied the {hydrotable_path} to {fim_inputs_path} as fim_inputs.csv.")
 
 
 def uniqueFID(hydrotable, fid_dir, stream_order=None):
     hydrotable_df = pd.read_csv(hydrotable)
+
     if stream_order:
-        stream_order = [str(order) for order in stream_order]
-        hydrotable_df["order_"] = hydrotable_df["order_"].astype(str)
-        hydrotable_df_filtered = hydrotable_df[
-            hydrotable_df["order_"].isin(stream_order)
-        ]
-        unique_FIDs = hydrotable_df_filtered["feature_id"].drop_duplicates()
+        if isinstance(stream_order, str) and (
+            ">=" in stream_order
+            or "<=" in stream_order
+            or ">" in stream_order
+            or "<" in stream_order
+        ):
+            # Handle conditions like ">=3", "<=4", etc.
+            operator, value = None, None
+            if ">=" in stream_order:
+                operator, value = ">=", int(stream_order.split(">=")[1])
+            elif "<=" in stream_order:
+                operator, value = "<=", int(stream_order.split("<=")[1])
+            elif ">" in stream_order:
+                operator, value = ">", int(stream_order.split(">")[1])
+            elif "<" in stream_order:
+                operator, value = "<", int(stream_order.split("<")[1])
+
+            hydrotable_df["order_"] = hydrotable_df["order_"].astype(int)
+            if operator == ">=":
+                hydrotable_df_filtered = hydrotable_df[hydrotable_df["order_"] >= value]
+            elif operator == "<=":
+                hydrotable_df_filtered = hydrotable_df[hydrotable_df["order_"] <= value]
+            elif operator == ">":
+                hydrotable_df_filtered = hydrotable_df[hydrotable_df["order_"] > value]
+            elif operator == "<":
+                hydrotable_df_filtered = hydrotable_df[hydrotable_df["order_"] < value]
+
+        elif isinstance(stream_order, (list, int)):
+            if isinstance(stream_order, int):
+                stream_order = [stream_order]
+            stream_order = [str(order) for order in stream_order]
+            hydrotable_df["order_"] = hydrotable_df["order_"].astype(str)
+            hydrotable_df_filtered = hydrotable_df[
+                hydrotable_df["order_"].isin(stream_order)
+            ]
+        else:
+            raise ValueError(
+                "Invalid stream_order format. Use a list of values, a single value, or a condition like '>=3'."
+            )
     else:
-        unique_FIDs = hydrotable_df["feature_id"].drop_duplicates()
+        # No filter, use the whole dataset
+        hydrotable_df_filtered = hydrotable_df
+
+    unique_FIDs = hydrotable_df_filtered["feature_id"].drop_duplicates()
     unique_FIDs_df = pd.DataFrame(unique_FIDs, columns=["feature_id"])
     unique_FIDs_df.to_csv(fid_dir, index=False)
     print(f"Unique feature IDs saved to {fid_dir}.")
