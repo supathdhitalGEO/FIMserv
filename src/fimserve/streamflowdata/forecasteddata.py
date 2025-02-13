@@ -121,7 +121,7 @@ def processnetCDF(netcdf_file_path, filter_df, output_folder_path):
     merged_df.to_csv(output_csv_file_path, index=False)
 
 
-def ProcessForecasts(CSVFILES, forecast_date, hour, forecast_range, sort_by, data_dir):
+def ProcessForecasts(CSVFILES, forecast_date, hour, forecast_range, sort_by, data_dir, huc):
     merge_folder = os.path.join(CSVFILES, "mergedAndSorted")
     os.makedirs(merge_folder, exist_ok=True)
 
@@ -173,7 +173,7 @@ def ProcessForecasts(CSVFILES, forecast_date, hour, forecast_range, sort_by, dat
                     "%Y%m%d"
                 )
 
-                sorted_file_name = f"{forecast_range}_{adjusted_date}_{adjusted_forecast_hour:02d}UTC.csv"
+                sorted_file_name = f"{forecast_range}_{huc}_{adjusted_date}_{adjusted_forecast_hour:02d}UTC.csv"
                 sorted_file_path = os.path.join(data_dir, sorted_file_name)
                 original_file_path = os.path.join(CSVFILES, csv_file)
                 os.rename(original_file_path, sorted_file_path)
@@ -288,7 +288,7 @@ def main(
         or forecast_range == "shortrange"
     ):
         ProcessForecasts(
-            CSVFILES, forecast_date, hour, forecast_range, sort_by, data_dir
+            CSVFILES, forecast_date, hour, forecast_range, sort_by, data_dir, HUC
         )
         print(f"The final discharge values saved to {data_dir}")
         try:
