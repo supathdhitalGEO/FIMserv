@@ -38,6 +38,8 @@ notebook = "^7.3.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
+sphinx = "<7.0"
+sphinx-autobuild = "^2024.10.3"
 
 [build-system]
 requires = ["poetry-core"]

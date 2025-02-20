@@ -31,6 +31,9 @@ This FIMserv framework is published as python package and published on [PyPI](ht
 ```bash
 FIMserv/
 ├── docs/                   # Documentation (contains 'FIMserv' Tool usage sample codes)
+│     ├── source/           #Contains  sphinx documentation (under development)
+│     ├──code_usage.ipynb  #Contains the detailed documentation
+│     └── FIMin3Steps.ipynb  #Focusing only on FIM generation within 3 steps  
 ├── GeoGLOWS/               # Streamflow download using GeoGLOWS hydrofabrics
 ├── src/
 │   └── fimserve/         
@@ -118,7 +121,23 @@ Use Google Colab. Here is **Detailed code Usage of FIMserv in Google Colab**: [!
 
 **Different HUC8 IDs, USGS gauge stations and flowline information that might be required to further understand/running this framework can be found in this <a href="https://ualabama.maps.arcgis.com/apps/instant/basic/index.html?appid=88789b151b50430d8e840d573225b36b" target="_blank">ArcGIS Instant App</a>.** 
 
- 
+### **Citing This Tool**
+**Using BibTex Citation**
+```
+@article{Baruah2025FIMserv,
+  author = {Anupal Baruah and Supath Dhital and Sagy Cohen and others},
+  title = {{FIMserv v.1.0: A Tool for Streamlining Flood Inundation Mapping (FIM) Using the United States Operational Hydrological Forecasting Framework}},
+  journal = {ESS Open Archive},
+  year = {2025},
+  month = {February 18},
+  doi = {10.22541/essoar.173991613.37443127/v1}
+}
+```
+**OR for other format**,
+```
+Anupal Baruah, Supath Dhital, Sagy Cohen, et al. FIMserv v.1.0: A Tool for Streamlining Flood Inundation Mapping (FIM) Using the United States Operational Hydrological Forecasting Framework. ESS Open Archive . February 18, 2025.
+DOI: 10.22541/essoar.173991613.37443127/v1
+```
 ### **Acknowledgements**
 <hr style="border: 1px solid black; margin: 0;">  
 
