@@ -15,8 +15,8 @@ start_date = "2016-01-01"
 end_date = "2016-12-30"
 
 # #For 12060202
-# feature_id = ["5513784", '5513550', '5512092', '5512484']
-# usgs_sites = ['08096500','08096580',"08092000", "08091000"]
+feature_id = ["5513784", '5513550', '5512092', '5512484']
+usgs_sites = ['08096500','08096580',"08092000", "08091000"]
 
 # # #Similarly, for 12060102
 # # feature_id= ['5489963', '5488917', '5489939']
@@ -28,13 +28,13 @@ end_date = "2016-12-30"
 
 # # # # for fixed date or day data
 value_times = ["2016-10-15"]
-fm.getNWMretrospectivedata(start_date, end_date, huc, value_times)
+# fm.getNWMretrospectivedata(huc, start_date, end_date, value_times)
 
 
-# #Get USGS data
+# # #Get USGS data
 # fm.getUSGSsitedata(start_date, end_date, usgs_sites, huc)
 
-# # # fm.plotNWMStreamflow(huc, feature_id, start_date, end_date)
+fm.plotNWMStreamflow(huc, start_date, end_date, feature_id)
 # # #Get the forecast data
 # # #Short range forecast
 # # fm.getNWMForecasteddata(
@@ -51,5 +51,5 @@ fm.getNWMretrospectivedata(start_date, end_date, huc, value_times)
 # #     huc, forecast_range="mediumrange", forecast_date="2024-11-14", hour=6
 # # )
 
-# # Run the FIM model
-# fm.runOWPHANDFIM(huc)
+# Run the FIM model
+fm.runOWPHANDFIM(huc)
