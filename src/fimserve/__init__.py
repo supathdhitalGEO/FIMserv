@@ -7,6 +7,7 @@ from .streamflowdata.nwmretrospective import getNWMretrospectivedata
 from .runFIM import runOWPHANDFIM
 
 from .streamflowdata.forecasteddata import getNWMForecasteddata
+from .streamflowdata.geoglows import getGEOGLOWSstreamflow
 
 # plots
 from .plot.nwmfid import plotNWMStreamflow

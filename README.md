@@ -4,7 +4,6 @@
 [![Version](https://img.shields.io/github/v/release/sdmlua/FIMserv)](https://github.com/sdmlua/FIMserv/releases)
 [![Issues](https://img.shields.io/github/issues/sdmlua/FIMserv)](https://github.com/sdmlua/FIMserv/issues)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://opensource.org/licenses/GPL-3.0)
-[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fsdmlua%2FFIMserv&count_bg=%231A93AE&title_bg=%23E48A8A&icon=clyp.svg&icon_color=%23E7E7E7&title=Views&edge_flat=false)](https://hits.seeyoufarm.com)
 [![PyPI version](https://badge.fury.io/py/fimserve.svg?icon=si%3Apython)](https://badge.fury.io/py/fimserve)
 [![PyPI Downloads](https://static.pepy.tech/badge/fimserve)](https://pepy.tech/projects/fimserve)
 [![Publish Status](https://github.com/sdmlua/FIMserv/actions/workflows/python-publish.yml/badge.svg)](https://github.com/sdmlua/FIMserv/actions/workflows/python-publish.yml)
