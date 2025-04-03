@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 from ..datadownload import setup_directories
 
+
 def getUSGSdata(data_dir, usgs_site, start_date, end_date):
     location_id = f"usgs-{usgs_site}"
 
@@ -72,6 +73,7 @@ def plotUSGSStreamflowData(dischargedata, usgs_sites, output_dir, start_date, en
         print(
             f"\033[1m****Data not found for the following USGS gauge sites: {', '.join(missing_sites)}****\033[0m"
         )
+
 
 def plotUSGSStreamflow(huc, usgs_sites, start_date, end_date):
     code_dir, data_dir, output_dir = setup_directories()

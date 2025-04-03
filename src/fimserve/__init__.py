@@ -11,7 +11,7 @@ from .streamflowdata.geoglows import getGEOGLOWSstreamflow
 
 # plots
 from .plot.nwmfid import plotNWMStreamflow
-from .plot.usgs import getUSGSsitedata
+from .streamflowdata.usgsdata import getUSGSsitedata
 from .plot.comparestreamflow import CompareNWMnUSGSStreamflow
 from .plot.usgs import plotUSGSStreamflow
 from .plot.src import plotSRC

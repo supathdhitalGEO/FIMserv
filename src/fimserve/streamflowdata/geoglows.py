@@ -79,13 +79,13 @@ def getGLOWS_data(
 
 
 # Function to call
-def getGEOGLOWSstreamflow(huc, value_time, hydrotable, start_date=None, end_date=None):
+def getGEOGLOWSstreamflow(huc, event_time, hydrotable, start_date=None, end_date=None):
     """
     Get GLOWS data for a specific HUC and save it to a CSV file.
     """
-    
+
     code_dir, data_dir, output_dir = setup_directories()
 
     HUC_dir = os.path.join(output_dir, f"flood_{huc}")
     # Create a output directory
-    getGLOWS_data(value_time, hydrotable, data_dir, HUC_dir, huc, start_date, end_date)
+    getGLOWS_data(event_time, hydrotable, data_dir, HUC_dir, huc, start_date, end_date)

@@ -8,9 +8,9 @@ hydrotable_dir = "/Users/supath/Downloads/MSResearch/FIMserv/FIMserv/GeoGLOWS/hy
 # Download the data
 fm.DownloadHUC8(huc)
 
-#Downloading the GeoGlows Streamflow data
+# Downloading the GeoGlows Streamflow data
 fm.getGEOGLOWSstreamflow(
     huc,
-    value_time="2016-10-15",
+    event_time="2016-10-15",
     hydrotable=hydrotable_dir,
 )
