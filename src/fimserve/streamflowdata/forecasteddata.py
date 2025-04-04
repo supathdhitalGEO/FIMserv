@@ -121,7 +121,9 @@ def processnetCDF(netcdf_file_path, filter_df, output_folder_path):
     merged_df.to_csv(output_csv_file_path, index=False)
 
 
-def ProcessForecasts(CSVFILES, forecast_date, hour, forecast_range, sort_by, data_dir, huc):
+def ProcessForecasts(
+    CSVFILES, forecast_date, hour, forecast_range, sort_by, data_dir, huc
+):
     merge_folder = os.path.join(CSVFILES, "mergedAndSorted")
     os.makedirs(merge_folder, exist_ok=True)
 

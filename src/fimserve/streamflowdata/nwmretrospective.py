@@ -7,7 +7,6 @@ import teehr.fetching.nwm.retrospective_points as nwm_retro
 
 from ..datadownload import setup_directories
 
-
 def getdischargeforspecifiedtime(
     retrospective_dir, location_ids, specific_date, data_dir, huc, date_type
 ):
@@ -51,7 +50,7 @@ def getdischargeforspecifiedtime(
         formatted_datetime = specific_date.strftime("%Y%m%d%H%M%S")
 
     # Save to a CSV file with the date and HUC as filename
-    finalHANDdischarge_dir = os.path.join(data_dir, f"{formatted_datetime}_{huc}.csv")
+    finalHANDdischarge_dir = os.path.join(data_dir, f"NWM_{formatted_datetime}_{huc}.csv")
     discharge_data.to_csv(finalHANDdischarge_dir, index=False)
     print(f"Discharge values saved to {finalHANDdischarge_dir}")
 

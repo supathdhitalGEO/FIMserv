@@ -1,7 +1,7 @@
 import fimserve as fm
 import pandas as pd
 
-huc = "12060202"
+huc = "03020202"
 
 # Download the data
 fm.DownloadHUC8(huc)
@@ -15,8 +15,8 @@ start_date = "2016-01-01"
 end_date = "2016-12-30"
 
 # #For 12060202
-feature_id = ["5513784", '5513550', '5512092', '5512484']
-usgs_sites = ['08096500','08096580',"08092000", "08091000"]
+feature_id = ["5513784", "5513550", "5512092", "5512484"]
+usgs_sites = ["08096500", "08096580", "08092000", "08091000"]
 
 # # #Similarly, for 12060102
 # # feature_id= ['5489963', '5488917', '5489939']
@@ -26,15 +26,15 @@ usgs_sites = ['08096500','08096580',"08092000", "08091000"]
 # # feature_id = ['11239079', '11239241', '11239465', '8791643']
 # # usgs_sites = ['0209205053', '02091814', '02089500', '02089000']
 
-# # # # for fixed date or day data
-value_times = ["2016-10-15"]
-# fm.getNWMretrospectivedata(huc, start_date, end_date, value_times)
+# for fixed date or day data
+value_times = ["2016-10-15", '2016-10-16 12:00:00']
+fm.getNWMretrospectivedata(huc, start_date, end_date, value_times)
 
 
-# # #Get USGS data
-# fm.getUSGSsitedata(start_date, end_date, usgs_sites, huc)
+# #Get USGS data
+fm.getUSGSsitedata(huc, value_times=value_times)
 
-fm.plotNWMStreamflow(huc, start_date, end_date, feature_id)
+# fm.plotNWMStreamflow(huc, start_date, end_date, feature_id)
 # # #Get the forecast data
 # # #Short range forecast
 # # fm.getNWMForecasteddata(
