@@ -4,7 +4,7 @@ import pandas as pd
 huc = "03020202"
 
 # Download the data
-# fm.DownloadHUC8(huc)
+fm.DownloadHUC8(huc)
 
 # # #Downloading the raster without headwaters
 # # fm.DownloadHUC8(huc, stream_order=[5, 6, 7, 8, 9, 10])
@@ -27,8 +27,8 @@ usgs_sites = ["08096500", "08096580", "08092000", "08091000"]
 # # usgs_sites = ['0209205053', '02091814', '02089500', '02089000']
 
 # for fixed date or day data
-value_times = ["2016-10-15", "2016-10-15 00:00:00"]
-# fm.getNWMretrospectivedata(huc, start_date, end_date, value_times)
+value_times = ["2016-10-15", '2016-10-16 12:00:00']
+fm.getNWMretrospectivedata(huc, start_date, end_date, value_times)
 
 
 # #Get USGS data
@@ -52,4 +52,4 @@ fm.getUSGSsitedata(huc, value_times=value_times)
 # # )
 
 # Run the FIM model
-# fm.runOWPHANDFIM(huc)
+fm.runOWPHANDFIM(huc)
