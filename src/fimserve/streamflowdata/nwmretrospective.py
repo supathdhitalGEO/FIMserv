@@ -18,16 +18,16 @@ def getdischargeforspecifiedtime(
         df = pd.read_parquet(file)
         all_data = pd.concat([all_data, df], ignore_index=True)
 
-    df["value_time"] = pd.to_datetime(df["value_time"])
+    all_data["value_time"] = pd.to_datetime(all_data["value_time"])
 
     locationID_df = pd.read_csv(location_ids)
     location_ids = [f"nwm30-{int(fid)}" for fid in locationID_df["feature_id"]]
 
     specific_date = pd.to_datetime(specific_date)
     if date_type == "date":
-        filtered_df = df[
-            (df["location_id"].isin(location_ids))
-            & (df["value_time"].dt.date == specific_date.date())
+        filtered_df = all_data[
+            (all_data["location_id"].isin(location_ids))
+            & (all_data["value_time"].dt.date == specific_date.date())
         ].copy()
         filtered_df["feature_id"] = filtered_df["location_id"].str.replace("nwm30-", "")
         discharge_data = (
@@ -38,8 +38,8 @@ def getdischargeforspecifiedtime(
         )
         formatted_datetime = specific_date.strftime("%Y%m%d")
     else:
-        filtered_df = df[
-            (df["location_id"].isin(location_ids)) & (df["value_time"] == specific_date)
+        filtered_df = all_data[
+            (all_data["location_id"].isin(location_ids)) & (all_data["value_time"] == specific_date)
         ].copy()
         filtered_df.loc[:, "feature_id"] = filtered_df["location_id"].str.replace(
             "nwm30-", ""

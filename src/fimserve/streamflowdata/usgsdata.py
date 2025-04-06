@@ -28,7 +28,6 @@ def getusgs_discharge(
         output_parquet_dir=output_dir,
         overwrite_output=True,
     )
-    print(f"USGS discharge data saved to {output_dir}.")
 
 #If value_times is mentioned and user need the discharge for specific time
 def getdischargeforspecifiedtime(
@@ -73,7 +72,9 @@ def getdischargeforspecifiedtime(
         .reset_index()
         .rename(columns={"value": "discharge"})
     )
-
+    #Make sure the columns are in int and float
+    discharge_data = discharge_data.astype({"feature_id": int, "discharge": float})
+    
     formatted_datetime = specific_date.strftime("%Y%m%d") if date_type == "date" else specific_date.strftime("%Y%m%d%H%M%S")
     finalHANDdischarge_dir = os.path.join(data_dir, f"USGS_{formatted_datetime}_{huc}.csv")
     discharge_data.to_csv(finalHANDdischarge_dir, index=False)
@@ -87,6 +88,9 @@ def getUSGSsitedata(huc=None, start_date = None, end_date= None, usgs_sites=None
     assign a feature_id corresponding to the usgs_sites and save in the data/inputs as required by the FIMserv.
     """
     code_dir, data_dir, output_dir = setup_directories()
+    HUC_dir = os.path.join(output_dir, f"flood_{huc}")
+    featureID_dir = os.path.join(HUC_dir, f"feature_IDs.csv")
+    
     def process_value_times(huc_key, value_times_list, allow_cleanup=False):
         site_data = GetUSGSIDandCorrFID(huc_key)
         usgs_ids = site_data["USGS gauge station ID"].tolist()
