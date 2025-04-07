@@ -21,23 +21,21 @@ def calculate_metrics(nwm_data, usgs_data):
         (usgs_data - np.mean(usgs_data)) ** 2
     )
     apb = np.sum(np.abs(nwm_data - usgs_data)) / np.sum(usgs_data) * 100
-    r2 = r2_score(usgs_data, nwm_data)
 
-    return {"KGE": kge, "PBias (%)": apb, "R²": r2, "NSE": nse}
+    return {"KGE": kge, "PBias (%)": apb, "NSE": nse}
 
 
 # Dual-axis visualization
 def visualize_comparison(metrics, output_dir, usgs_site, huc):
-    metric_names = ["KGE", "R²", "NSE", "PBias (%)"]
+    metric_names = ["KGE", "NSE", "PBias (%)"]
     metric_values = [
         metrics["KGE"],
-        metrics["R²"],
         metrics["NSE"],
         metrics["PBias (%)"],
     ]
 
     fig, ax1 = plt.subplots(figsize=(6, 4))
-    bar_colors = ["tab:blue", "tab:green", "tab:purple", "tab:orange"]
+    bar_colors = ["tab:blue", "tab:purple", "tab:orange"]
 
     # Bar plot for the first three metrics
     ax1.bar(
@@ -54,7 +52,7 @@ def visualize_comparison(metrics, output_dir, usgs_site, huc):
     ax1.grid(axis="y", linestyle="--", alpha=1, zorder=0)
 
     # Vertical line between the third and fourth bars
-    plt.axvline(x=2.5, color="black", linestyle="--", linewidth=1.5)
+    plt.axvline(x=1.5, color="black", linestyle="--", linewidth=1.5)
 
     # Bar plot for PBias on secondary y-axis
     ax2 = ax1.twinx()
@@ -70,14 +68,15 @@ def visualize_comparison(metrics, output_dir, usgs_site, huc):
     ax2.tick_params(axis="y", labelcolor="red", labelsize=14)
     ax2.set_ylim(0, metric_values[-1] * 1.2)
 
-    # Add text on bars
     padding = 0.01
     for i, val in enumerate(metric_values):
-        ax = ax1 if i < 3 else ax2
-        text_color = "red" if i == 3 else "black"  # Red text for PBias
+        ax = ax1 if i < 2 else ax2
+        text_color = "red" if i == 2 else "black"
+        # Adjust padding depending on axis
+        pad = padding if i < 2 else val * 0.05  # 5% of PBias value
         ax.text(
             i,
-            val + padding,
+            val + pad,
             f"{val:.2f}",
             ha="center",
             va="bottom",
@@ -85,7 +84,6 @@ def visualize_comparison(metrics, output_dir, usgs_site, huc):
             fontweight="bold",
             color=text_color,
         )
-
     # Title and labels
     ax1.set_xlabel("Statistical Metrics", fontsize=16)
     plt.xticks(ticks=range(len(metric_names)), labels=metric_names, fontsize=14)

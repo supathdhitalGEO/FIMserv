@@ -20,7 +20,7 @@ def InitializeGEE(projectID=None):
         print(f"Error initializing GEE: {e}")
 
 
-def FIMVizualizer(raster_path, catchment_gpkg, zoom_level, huc_id, boundary_color="#800080"):  # Default to purple
+def FIMVizualizer(raster_path, catchment_gpkg, zoom_level, huc_id, boundary_color="#800080"): 
     with rasterio.open(raster_path) as src:
         data = src.read(1)
         binary_data = np.where(data > 0, 1, 0)
