@@ -38,6 +38,8 @@ FIMserv/
 │   └── fimserve/         
 │       ├── streamflowdata/ # Handles streamflow data
 │       │   ├── nwmretrospectivedata.py   # Processes NWM retrospective data
+│       │   ├── geoglows.py   # Module to retrieve geoglows streamflow data 
+│       │   ├── usgsdata.py   # Retrieve USGS gauge station data
 │       │   └── forecasteddata.py        # Processes all range forecasted streamflow data
 │       ├── plots/          # Vizualization functionalities
 │       ├── FIMsubset/      # Subsetting functionalities for FIM
@@ -61,6 +63,8 @@ FIMserv/
 
 Although not mandatory, 
 **we strongly recommend users create a virtual environment and install this package on that virtual environment to avoid the conflict between system dependencies and package dependencies.**
+
+**‼️ If your system doesnot have git, install it first. Download link of git for windows or MacOS: https://git-scm.com/downloads**
 ```bash
 #creating a virtual environment using conda
 conda create --name fimserve python==3.10
