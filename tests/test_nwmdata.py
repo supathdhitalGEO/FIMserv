@@ -5,11 +5,11 @@ huc = "03020202"
 start_date = "2020-01-01"
 end_date = "2020-01-03"
 
-# fm.getNWMretrospectivedata(start_date, end_date, huc)
+# fm.getNWMretrospectivedata(huc, start_date, end_date)
 
 # to work with only huc or for getting a retrospective streamflow for the evaluation or something
 value_times = ["2020-01-01 00:00:00"]
-# fm.getNWMretrospectivedata(start_date, end_date, huc, value_times)
+# fm.getNWMretrospectivedata(huc, start_date, end_date, value_times)
 
 
 # For the multiple watersheds with multiple events at the same time
