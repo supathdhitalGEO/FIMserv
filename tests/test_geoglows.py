@@ -14,3 +14,7 @@ fm.getGEOGLOWSstreamflow(
     event_time="2016-10-15",
     hydrotable=hydrotable_dir,
 )
+
+# run the FIM model
+fm.runOWPHANDFIM(huc)
+
