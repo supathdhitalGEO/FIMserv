@@ -32,7 +32,9 @@ def getGLOWS_data(
     """
     Get GLOWS data for a specific event time and save it to a CSV file.
     """
-
+    
+    value_time = pd.to_datetime(event_time)
+    
     if start_date is None or end_date is None:
         value_time = pd.to_datetime(event_time)
 
@@ -66,11 +68,13 @@ def getGLOWS_data(
     out_dir = Path(output_dir) / "GEOGLOWS"
     out_dir.mkdir(parents=True, exist_ok=True)
     output_file = out_dir / f"{huc}_{start_date}_{end_date}_streamflow.csv"
+    output_df["feature_id"] = output_df["feature_id"].astype(int)
     output_df.to_csv(output_file, index=False)
 
     # Filter based on value_time
     value_time_df = output_df[output_df["time"] == value_time]
     value_time_df = value_time_df[["feature_id", "discharge"]]
+    value_time_df["feature_id"] = value_time_df["feature_id"].astype(int)
 
     # Export the value_time data to a separate CSV file
     value_timeSTR = pd.to_datetime(value_time).strftime("%Y%m%d")
