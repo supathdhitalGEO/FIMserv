@@ -28,3 +28,6 @@ from .vizualizationFIM import vizualizeFIM
 
 # Statistics
 from .statistics.calculatestatistics import CalculateStatistics
+
+#For intersected HUC8 boundary
+from .intersectedHUC import getIntersectedHUC8ID
