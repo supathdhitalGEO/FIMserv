@@ -65,6 +65,8 @@ Although not mandatory,
 **we strongly recommend users create a virtual environment and install this package on that virtual environment to avoid the conflict between system dependencies and package dependencies.**
 
 **‼️ If your system doesnot have git, install it first. Download link of git for windows or MacOS: https://git-scm.com/downloads**
+
+**For conda users**
 ```bash
 #creating a virtual environment using conda
 conda create --name fimserve python==3.10
@@ -72,7 +74,21 @@ conda create --name fimserve python==3.10
 #Activate environment
 conda activate fimserve
 ```
-**Install or add fimserve into your workflows**
+
+**If you don't have conda**
+```bash
+#create a virtual env using 'venv'
+python -m venv fimserve python==3.10
+
+#activate environment
+#For MAC Users
+source fimserve/bin/activate
+
+#For WINDOW Users
+fimserve\Scripts\activate
+```
+
+**Once Virtual env is ready, install or add fimserve into your workflows**
 ```bash
 #Using pip
 pip install fimserve
