@@ -217,7 +217,7 @@ def ProcessForecasts(
                 combined_df.groupby("feature_id")["discharge"].max().reset_index()
             )
 
-        sorted_file_name = f"{hour:02d}UTC_{forecast_range}_{group_date}.csv"
+        sorted_file_name = f"{hour:02d}UTC_{forecast_range}_{group_date}_{huc}.csv"
         sorted_file_path = os.path.join(data_dir, sorted_file_name)
         sorted_df.to_csv(sorted_file_path, index=False)
 
