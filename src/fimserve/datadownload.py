@@ -17,19 +17,30 @@ def setup_directories():
 
     return code_dir, data_dir, output_dir
 
+# def clone_repository(code_dir):
+#     repo_path = os.path.join(code_dir)
+
+#     # Check if repository folder exists and has files in it
+#     if os.path.exists(repo_path) and os.listdir(repo_path):
+#         print(
+#             f"Repository already exists at {repo_path} and contains files. Skipping clone."
+#         )
+#     else:
+#         # Clone the repository if it doesn't exist or is empty
+#         repo_url = "https://github.com/NOAA-OWP/inundation-mapping.git"
+#         subprocess.run(["git", "clone", repo_url, repo_path], check=True)
+#         print(f"Repository cloned into: {repo_path}")
 
 def clone_repository(code_dir):
     repo_path = os.path.join(code_dir)
+    repo_url = "https://github.com/NOAA-OWP/inundation-mapping.git"
+    version_tag = "v4.6.1.4"
 
-    # Check if repository folder exists and has files in it
     if os.path.exists(repo_path) and os.listdir(repo_path):
-        print(
-            f"Repository already exists at {repo_path} and contains files. Skipping clone."
-        )
+        print(f"Repository already exists at {repo_path}. Skipping clone.")
     else:
-        # Clone the repository if it doesn't exist or is empty
-        repo_url = "https://github.com/NOAA-OWP/inundation-mapping.git"
         subprocess.run(["git", "clone", repo_url, repo_path], check=True)
+        subprocess.run(["git", "checkout", version_tag], cwd=repo_path, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print(f"Repository cloned into: {repo_path}")
 
 
