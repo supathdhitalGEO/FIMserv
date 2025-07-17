@@ -37,9 +37,9 @@ fm.getNWMretrospectivedata(huc, start_date, end_date, value_times)
 # fm.plotNWMStreamflow(huc, start_date, end_date, feature_id)
 # # #Get the forecast data
 # # #Short range forecast
-# # fm.getNWMForecasteddata(
-# #     huc, forecast_range="shortrange", forecast_date="2024-11-14", hour=6
-# # )
+# fm.getNWMForecasteddata(
+#     huc, forecast_range="shortrange", forecast_date="2024-11-14"
+# )
 
 # # #Long range forecast
 # # fm.getNWMForecasteddata(
@@ -52,4 +52,4 @@ fm.getNWMretrospectivedata(huc, start_date, end_date, value_times)
 # # )
 
 # Run the FIM model
-fm.runOWPHANDFIM(huc, depth=True)
+fm.runOWPHANDFIM(huc)

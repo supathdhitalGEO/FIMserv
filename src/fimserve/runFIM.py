@@ -77,8 +77,9 @@ def runfim(code_dir, output_dir, HUC_code, data_dir, depth=False):
     finally:
         os.chdir(original_dir)
 
-def runOWPHANDFIM(huc, depth=False):
+def runOWPHANDFIM(huc, depth=False, version=None):
     code_dir, data_dir, output_dir = setup_directories()
+    
     discharge = glob.glob(os.path.join(data_dir, f"*{huc}*.csv"))
     for file in discharge:
         runfim(code_dir, output_dir, huc, file, depth=depth)

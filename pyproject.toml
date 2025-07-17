@@ -1,46 +1,65 @@
-[tool.poetry]
+[project]
 name = "fimserve"
-version = "0.1.82"
+version = "0.1.84"
 description = "Framework which is developed with the purpose of quickly generating Flood Inundation Maps (FIM) for emergency response and risk assessment. It is developed under Surface Dynamics Modeling Lab (SDML)."
-authors = ["Supath Dhital <sdhital@crimson.ua.edu>"]
-license = "GPL-3.0"
+authors = [{ name = "Supath Dhital", email = "sdhital@crimson.ua.edu" }]
+maintainers = [{ name = "Supath Dhital", email = "sdhital@crimson.ua.edu" }]
+license = { text = "GPL-3.0" }
 readme = "README.md"
-maintainers = ["Supath Dhital <sdhital@crimson.ua.edu>"]
-homepage = "https://github.com/sdmlua/FIMserv"
-repository = "https://github.com/sdmlua/FIMserv"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "pytest>=8.3,<8.4",
+    "teehr==0.4.1",
+    "geemap>=0.35.1",
+    "pyarrow>=15.0.2",
+    "utils>=1.0.2",
+    "netcdf4==1.6.5",
+    "matplotlib>=3.9.2",
+    "awscli==1.34.23",
+    "botocore==1.35.23",
+    "numba>=0.60.0",
+    "bottleneck>=1.3.6",
+    "localtileserver>=0.10.5",
+    "tqdm>=4.67.0",
+    "scipy>=1.14.1",
+    "aiohttp==3.10.8",
+    "scikit-learn>=1.5.2",
+    "tabulate>=0.9.0",
+    "nodejs-bin>=18.4.0a4",
+    "ipykernel>=6.17.1",
+    "numpy==1.26.4",
+    "beautifulsoup4>=4.12.3",
+    "python-dotenv>=1.0.1",
+    "jupyter>=1.1.1",
+    "notebook>=6.5.7",
+    "geocube<=0.7.1",
+    "geopandas>=0.14.3",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.10,<3.13"
-pytest = "^8.3.3"
-teehr = "0.4.1"
-geemap = "^0.35.1"
-pyarrow = "^15.0.2"
-utils = "^1.0.2"
-netcdf4 = "1.6.5"
-matplotlib = "^3.9.2"
-awscli = "1.34.23"
-botocore = "1.35.23"
-numba = "^0.60.0"
-bottleneck = "^1.3.6"
-localtileserver = "^0.10.5"
-tqdm = "^4.67.0"
-scipy = "^1.14.1"
-aiohttp = "3.10.8"
-scikit-learn = "^1.5.2"
-tabulate = "^0.9.0"
-nodejs-bin = "^18.4.0a4"
-ipykernel = "^6.17.1"
-numpy = "1.26.4"
-beautifulsoup4 = "^4.12.3"
-python-dotenv = "^1.0.1"
-jupyter = "^1.1.1"
-notebook = "^6.5.7"
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<8.4",
+    "sphinx<7.0",
+    "sphinx-autobuild>=2024.10.3"
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.4"
-sphinx = "<7.0"
-sphinx-autobuild = "^2024.10.3"
+[project.urls]
+Homepage = "https://github.com/sdmlua/FIMserv"
+Repository = "https://github.com/sdmlua/FIMserv"
+Issues = "https://github.com/sdmlua/FIMserv/issues"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=69.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = ["tests"]
