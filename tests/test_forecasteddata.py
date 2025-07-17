@@ -11,10 +11,10 @@ huc = "03020202"
 # )
 
 # For current date and time forecasted data
-# fm.getNWMForecasteddata(huc, forecast_range="shortrange")
+fm.getNWMForecasteddata(huc, forecast_range="shortrange")
 
 
 # By default the data will be filtered based on maximum discharge value
 # Otherwise user need to mention
 
-fm.getNWMForecasteddata(huc, forecast_range="longrange", sort_by="minimum")
+# fm.getNWMForecasteddata(huc, forecast_range="longrange", sort_by="minimum")

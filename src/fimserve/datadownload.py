@@ -17,61 +17,61 @@ def setup_directories():
 
     return code_dir, data_dir, output_dir
 
-# def clone_repository(code_dir):
-#     repo_path = os.path.join(code_dir)
-
-#     # Check if repository folder exists and has files in it
-#     if os.path.exists(repo_path) and os.listdir(repo_path):
-#         print(
-#             f"Repository already exists at {repo_path} and contains files. Skipping clone."
-#         )
-#     else:
-#         # Clone the repository if it doesn't exist or is empty
-#         repo_url = "https://github.com/NOAA-OWP/inundation-mapping.git"
-#         subprocess.run(["git", "clone", repo_url, repo_path], check=True)
-#         print(f"Repository cloned into: {repo_path}")
-
-def clone_repository(code_dir):
+def clone_repository(code_dir, version=None):
     repo_path = os.path.join(code_dir)
     repo_url = "https://github.com/NOAA-OWP/inundation-mapping.git"
-    version_tag = "v4.6.1.4"
 
+    # Map version strings to git tags
+    version_tag_map = {
+        "4.5": "v4.6.1.4",
+        "default": "main",
+    }
+
+    # Determine tag to checkout
+    version_tag = version_tag_map.get(version, version_tag_map["default"])
     if os.path.exists(repo_path) and os.listdir(repo_path):
         print(f"Repository already exists at {repo_path}. Skipping clone.")
-    else:
-        subprocess.run(["git", "clone", repo_url, repo_path], check=True)
-        subprocess.run(["git", "checkout", version_tag], cwd=repo_path, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print(f"Repository cloned into: {repo_path}")
+        return
+
+    # Clone repo
+    subprocess.run(["git", "clone", repo_url, repo_path], check=True)
+
+    # Checkout specific version/tag (only if not main)
+    if version_tag != "main":
+        try:
+            subprocess.run(["git", "checkout", version_tag], cwd=repo_path, check=True)
+        except subprocess.CalledProcessError:
+            subprocess.run(["git", "tag"], cwd=repo_path)  # List available tags
+            raise
+    print(f"Repository cloned into: {repo_path} (version: {version_tag})")
 
 
-def download_data(huc_number, base_dir):
+def download_data(huc_number, base_dir, version=None):
     output_dir = os.path.join(base_dir, f"flood_{huc_number}", str(huc_number))
+    os.makedirs(output_dir, exist_ok=True)
 
-    # Create the directory structure if it doesn't exist
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    # Determine S3 path based on version
+    if version == "4.5":
+        s3_path = f"s3://ciroh-owp-hand-fim/hand_fim_4_5_2_11/{huc_number}/"
+    else:
+        s3_path = f"s3://ciroh-owp-hand-fim/hand_fim_4_8_6_1/{huc_number}/"
 
-    # For the CIROH
-    cmd = f"aws s3 sync s3://ciroh-owp-hand-fim/hand_fim_4_5_2_11/{huc_number}/ {output_dir} --no-sign-request "
-
-    # Run the AWS CLI command
+    # Run the AWS CLI command with no-sign-request
+    cmd = f"aws s3 sync {s3_path} {output_dir} --no-sign-request"
     os.system(cmd)
-    print(f"Data for HUC {huc_number}")
+    print(f"Data for HUC {huc_number} downloaded to {output_dir}")
 
-    # Now copying the hydrotable.csv to the outside of directory as fim_inputs.csv
+    # Copy branch_ids.csv to fim_inputs.csv
     hydrotable_path = os.path.join(output_dir, "branch_ids.csv")
     fim_inputs_path = os.path.join(base_dir, f"flood_{huc_number}", "fim_inputs.csv")
 
-    # Read the first row from branch_ids.csv
-    with open(hydrotable_path, "r") as infile, open(
-        fim_inputs_path, "w", newline=""
-    ) as outfile:
+    with open(hydrotable_path, "r") as infile, open(fim_inputs_path, "w", newline="") as outfile:
         reader = csv.reader(infile)
         writer = csv.writer(outfile)
         for row in reader:
             writer.writerow(row)
 
-    print(f"Copied the {hydrotable_path} to {fim_inputs_path} as fim_inputs.csv.")
+    print(f"Copied {hydrotable_path} to {fim_inputs_path} as fim_inputs.csv.")
 
 
 def uniqueFID(hydrotable, fid_dir, stream_order=None):
@@ -140,13 +140,13 @@ def EnvFile(code_dir):
         f.write(env_content)
 
 
-def DownloadHUC8(huc, stream_order=None):
+def DownloadHUC8(huc, stream_order=None, version=None):
     code_dir, data_dir, output_dir = setup_directories()
-    clone_repository(code_dir)
+    clone_repository(code_dir, version)
 
     # if huc is not str:
     huc = str(huc)
-    download_data(huc, output_dir)
+    download_data(huc, output_dir, version)
     EnvFile(code_dir)
     HUC_dir = os.path.join(output_dir, f"flood_{huc}")
     hydrotable_dir = os.path.join(HUC_dir, str(huc), "hydrotable.csv")

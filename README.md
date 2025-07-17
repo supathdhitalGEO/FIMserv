@@ -91,7 +91,11 @@ fimserve\Scripts\activate
 **Once Virtual env is ready, install or add fimserve into your workflows**
 ```bash
 #Using pip
-pip install fimserve== 0.1.82 (check for the PyPI version mentioned above)
+pip install uv
+uv pip install fimserve 
+'OR'
+pip install fimserve
+
 
 #OR add using poetry to your framework development for quick FIM generation
 poetry add fimserve
