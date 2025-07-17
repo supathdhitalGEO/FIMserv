@@ -21,7 +21,7 @@
 ### **Background**
 <hr style="border: 1px solid black; margin: 0;">  
 
-OWP HAND-FIM is a national-scale operational flood forecasting framework (https://github.com/NOAA-OWP/inundation-mapping). It is a terrain-based fluvial flooding model that uses model-predicted streamflow and reach-averaged Synthetic Rating Curves (SRCs) to generate inundation extent and depth rasters at HUC-8 scale (Hydrologic Unit Code-8). The model can produce FIMs for all order streams within the watershed at a very low computational cost. This notebook streamline the FIM generation process or the OWP HAND-FIM framework on the cloud. It allow users to run over mutiple HUC-8s simultaneously. This model can run using any temporal resolution available from the input streamflow data (hourly, daily, monthly etc). ### **Currently we are running the FIM4.5 version for Inundation Mapping.**
+OWP HAND-FIM is a national-scale operational flood forecasting framework (https://github.com/NOAA-OWP/inundation-mapping). It is a terrain-based fluvial flooding model that uses model-predicted streamflow and reach-averaged Synthetic Rating Curves (SRCs) to generate inundation extent and depth rasters at HUC-8 scale (Hydrologic Unit Code-8). The model can produce FIMs for all order streams within the watershed at a very low computational cost. This notebook streamline the FIM generation process or the OWP HAND-FIM framework on the cloud. It allow users to run over mutiple HUC-8s simultaneously. This model can run using any temporal resolution available from the input streamflow data (hourly, daily, monthly etc). ### **Currently we are running the FIM4.5 version for Inundation Mapping.** 
 
 ### **Package structures**
 <hr style="border: 1px solid black; margin: 0;">  
@@ -95,6 +95,7 @@ pip install uv
 uv pip install fimserve 
 'OR'
 pip install fimserve
+
 
 #OR add using poetry to your framework development for quick FIM generation
 poetry add fimserve
