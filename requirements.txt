@@ -33,12 +33,14 @@ aniso8601==10.0.1
     # via flask-restx
 annotated-types==0.7.0
     # via pydantic
-anyio==4.9.0
+anyio==4.10.0
     # via
     #   httpx
     #   jupyter-server
     #   starlette
     #   watchfiles
+anywidget==0.9.18
+    # via geemap
 appdirs==1.4.4
     # via geocube
 appnope==0.1.4
@@ -47,7 +49,7 @@ arch==7.2.0
     # via teehr
 argon2-cffi==25.1.0
     # via jupyter-server
-argon2-cffi-bindings==21.2.0
+argon2-cffi-bindings==25.1.0
     # via argon2-cffi
 arrow==1.3.0
     # via isoduration
@@ -77,6 +79,8 @@ beautifulsoup4==4.13.4
     # via
     #   fimserve (pyproject.toml)
     #   nbconvert
+black==25.1.0
+    # via fimserve (pyproject.toml)
 bleach==6.2.0
     # via nbconvert
 blinker==1.9.0
@@ -104,7 +108,7 @@ cachetools==5.5.2
     #   google-auth
     #   odc-geo
     #   rio-tiler
-certifi==2025.7.14
+certifi==2025.8.3
     # via
     #   fiona
     #   httpcore
@@ -117,10 +121,11 @@ cffi==1.17.1
     # via argon2-cffi-bindings
 cftime==1.6.4.post1
     # via netcdf4
-charset-normalizer==3.4.2
+charset-normalizer==3.4.3
     # via requests
 click==8.2.1
     # via
+    #   black
     #   click-plugins
     #   cligj
     #   dask
@@ -149,13 +154,11 @@ colorama==0.4.6
     # via
     #   awscli
     #   sphinx-autobuild
-colour==0.1.5
-    # via geemap
-comm==0.2.2
+comm==0.2.3
     # via
     #   ipykernel
     #   ipywidgets
-contourpy==1.3.2
+contourpy==1.3.3
     # via
     #   bokeh
     #   matplotlib
@@ -169,7 +172,7 @@ dask-expr==1.1.21
     # via dask
 dataretrieval==1.0.12
     # via teehr
-debugpy==1.8.15
+debugpy==1.8.16
     # via ipykernel
 decorator==5.2.1
     # via
@@ -186,7 +189,7 @@ docutils==0.16
     #   sphinx
 duckdb==1.3.2
     # via teehr
-earthengine-api==1.5.24
+earthengine-api==1.6.3
     # via
     #   eerepr
     #   geemap
@@ -194,7 +197,7 @@ eerepr==0.1.2
     # via geemap
 executing==2.2.0
     # via stack-data
-fasteners==0.19
+fasteners==0.20
     # via zarr
 fastjsonschema==2.21.1
     # via nbformat
@@ -233,7 +236,7 @@ future==1.0.0
     # via geocoder
 gcsfs==2025.7.0
     # via teehr
-geemap==0.35.3
+geemap==0.36.1
     # via fimserve (pyproject.toml)
 geocoder==1.38.1
     # via geemap
@@ -249,7 +252,7 @@ google-api-core==2.25.1
     #   google-api-python-client
     #   google-cloud-core
     #   google-cloud-storage
-google-api-python-client==2.176.0
+google-api-python-client==2.179.0
     # via earthengine-api
 google-auth==2.40.3
     # via
@@ -269,7 +272,7 @@ google-auth-oauthlib==1.2.2
     # via gcsfs
 google-cloud-core==2.4.3
     # via google-cloud-storage
-google-cloud-storage==3.2.0
+google-cloud-storage==3.3.0
     # via
     #   earthengine-api
     #   gcsfs
@@ -284,11 +287,11 @@ googleapis-common-protos==1.70.0
     #   google-api-core
     #   grpcio-status
     #   pyspark
-grpcio==1.73.1
+grpcio==1.74.0
     # via
     #   grpcio-status
     #   pyspark
-grpcio-status==1.73.1
+grpcio-status==1.74.0
     # via pyspark
 h11==0.16.0
     # via
@@ -324,6 +327,8 @@ idna==3.10
     #   yarl
 imagesize==1.4.1
     # via sphinx
+importlib-metadata==8.7.0
+    # via dask
 importlib-resources==6.5.2
     # via flask-restx
 iniconfig==2.1.0
@@ -332,7 +337,7 @@ ipyevents==2.0.2
     # via geemap
 ipyfilechooser==0.6.0
     # via geemap
-ipykernel==6.29.5
+ipykernel==6.30.1
     # via
     #   fimserve (pyproject.toml)
     #   jupyter
@@ -351,6 +356,7 @@ ipytree==0.2.2
     # via geemap
 ipywidgets==8.1.7
     # via
+    #   anywidget
     #   bqplot
     #   ipyevents
     #   ipyfilechooser
@@ -380,11 +386,11 @@ jmespath==1.0.1
     # via botocore
 joblib==1.5.1
     # via scikit-learn
-json5==0.12.0
+json5==0.12.1
     # via jupyterlab-server
 jsonpointer==3.0.0
     # via jsonschema
-jsonschema==4.24.1
+jsonschema==4.25.0
     # via
     #   flask-restx
     #   jupyter-events
@@ -416,7 +422,7 @@ jupyter-events==0.12.0
     # via jupyter-server
 jupyter-leaflet==0.20.0
     # via ipyleaflet
-jupyter-lsp==2.2.5
+jupyter-lsp==2.2.6
     # via jupyterlab
 jupyter-server==2.16.0
     # via
@@ -427,7 +433,7 @@ jupyter-server==2.16.0
     #   notebook-shim
 jupyter-server-terminals==0.5.3
     # via jupyter-server
-jupyterlab==4.4.4
+jupyterlab==4.4.5
     # via
     #   jupyter
     #   notebook
@@ -441,8 +447,10 @@ jupyterlab-widgets==3.0.15
     # via ipywidgets
 kerchunk==0.2.7
     # via teehr
-kiwisolver==1.4.8
+kiwisolver==1.4.9
     # via matplotlib
+lark==1.2.2
+    # via rfc3987-syntax
 llvmlite==0.43.0
     # via numba
 localtileserver==0.10.6
@@ -455,7 +463,7 @@ markupsafe==3.0.2
     #   jinja2
     #   nbconvert
     #   werkzeug
-matplotlib==3.10.3
+matplotlib==3.10.5
     # via
     #   fimserve (pyproject.toml)
     #   geemap
@@ -469,15 +477,17 @@ morecantile==6.2.0
     # via
     #   rio-cogeo
     #   rio-tiler
-multidict==6.6.3
+multidict==6.6.4
     # via
     #   aiohttp
     #   yarl
 multimethod==1.10
     # via pandera
 mypy-extensions==1.1.0
-    # via typing-inspect
-narwhals==1.47.1
+    # via
+    #   black
+    #   typing-inspect
+narwhals==2.1.1
     # via
     #   bokeh
     #   plotly
@@ -500,7 +510,7 @@ netcdf4==1.6.5
     #   teehr
 nodejs-bin==18.4.0a4
     # via fimserve (pyproject.toml)
-notebook==7.4.4
+notebook==7.4.5
     # via
     #   fimserve (pyproject.toml)
     #   jupyter
@@ -565,6 +575,7 @@ overrides==7.7.0
     # via jupyter-server
 packaging==25.0
     # via
+    #   black
     #   bokeh
     #   dask
     #   geopandas
@@ -608,6 +619,8 @@ parso==0.8.4
     # via jedi
 partd==1.4.2
     # via dask
+pathspec==0.12.1
+    # via black
 patsy==1.0.1
     # via statsmodels
 pexpect==4.9.0
@@ -617,8 +630,10 @@ pillow==11.3.0
     #   bokeh
     #   matplotlib
 platformdirs==4.3.8
-    # via jupyter-core
-plotly==6.2.0
+    # via
+    #   black
+    #   jupyter-core
+plotly==6.3.0
     # via geemap
 pluggy==1.6.0
     # via pytest
@@ -640,6 +655,8 @@ protobuf==6.31.1
     #   proto-plus
 psutil==7.0.0
     # via ipykernel
+psygnal==0.14.1
+    # via anywidget
 ptyprocess==0.7.0
     # via
     #   pexpect
@@ -728,7 +745,7 @@ pyyaml==6.0.2
     #   bokeh
     #   dask
     #   jupyter-events
-pyzmq==27.0.0
+pyzmq==27.0.1
     # via
     #   ipykernel
     #   jupyter-client
@@ -771,6 +788,8 @@ rfc3986-validator==0.1.1
     # via
     #   jsonschema
     #   jupyter-events
+rfc3987-syntax==1.1.0
+    # via jsonschema
 rio-cogeo==5.4.2
     # via localtileserver
 rio-tiler==7.8.1
@@ -779,7 +798,7 @@ rioxarray==0.15.7
     # via
     #   geocube
     #   teehr
-rpds-py==0.26.0
+rpds-py==0.27.0
     # via
     #   jsonschema
     #   referencing
@@ -791,9 +810,9 @@ s3fs==2025.7.0
     # via teehr
 s3transfer==0.10.4
     # via awscli
-scikit-learn==1.7.0
+scikit-learn==1.7.1
     # via fimserve (pyproject.toml)
-scipy==1.16.0
+scipy==1.16.1
     # via
     #   fimserve (pyproject.toml)
     #   arch
@@ -848,7 +867,7 @@ sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
 stack-data==0.6.3
     # via ipython
-starlette==0.47.1
+starlette==0.47.2
     # via sphinx-autobuild
 statsmodels==0.14.5
     # via arch
@@ -868,7 +887,7 @@ toolz==1.0.0
     # via
     #   dask
     #   partd
-tornado==6.5.1
+tornado==6.5.2
     # via
     #   bokeh
     #   ipykernel
@@ -882,7 +901,6 @@ tqdm==4.67.1
 traitlets==5.14.3
     # via
     #   bqplot
-    #   comm
     #   ipykernel
     #   ipython
     #   ipywidgets
@@ -903,14 +921,16 @@ traittypes==0.2.1
     #   ipyleaflet
 typeguard==4.4.4
     # via pandera
-types-python-dateutil==2.9.0.20250708
+types-python-dateutil==2.9.0.20250809
     # via arrow
 typing-extensions==4.14.1
     # via
     #   aiosignal
     #   aiosqlite
     #   anyio
+    #   anywidget
     #   beautifulsoup4
+    #   ipython
     #   pydantic
     #   pydantic-core
     #   referencing
@@ -968,7 +988,7 @@ werkzeug==3.1.3
     #   server-thread
 widgetsnbextension==4.0.14
     # via ipywidgets
-wrapt==1.17.2
+wrapt==1.17.3
     # via
     #   aiobotocore
     #   deprecated
@@ -988,3 +1008,5 @@ zarr==2.18.7
     # via
     #   kerchunk
     #   teehr
+zipp==3.23.0
+    # via importlib-metadata
