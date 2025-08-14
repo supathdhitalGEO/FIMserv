@@ -54,7 +54,7 @@ def download_data(huc_number, base_dir, version=None):
     if version == "4.5":
         s3_path = f"s3://ciroh-owp-hand-fim/hand_fim_4_5_2_11/{huc_number}/"
     else:
-        s3_path = f"s3://ciroh-owp-hand-fim/hand_fim_4_8_6_1/{huc_number}/"
+        s3_path = f"s3://ciroh-owp-hand-fim/hand_fim_4_8_7_2/{huc_number}/"
 
     # Run the AWS CLI command with no-sign-request
     cmd = f"aws s3 sync {s3_path} {output_dir} --no-sign-request"
