@@ -121,7 +121,11 @@ value_time = ["2016-10-09 03:00:00"]   #Time of the streamflow data user want to
 OWP HAND FIM model runs at HUC-8 watershed scale. User need to identify the HUC8 ID for their specific region of interest. In this example we are using the Neuse River Flooding in North Carolina from Hurricane Mathhew,2016. The HUC8 id is 03020202. The locations and informations about the HUC8 IDs are available here in: **<a href="https://ualabama.maps.arcgis.com/apps/instant/basic/index.html?appid=88789b151b50430d8e840d573225b36b" target="_blank">ArcGIS Instant App</a>**.
 
 ```bash
-fm.DownloadHUC8(huc)    #Download the HUC8 data
+fm.DownloadHUC8(huc)    #Download the HUC8 data. By default this command will download the latestversion of OWP HAND rasters
+```
+For earlier version, use
+
+fm.DownloadHUC8(huc,version='4.5')
 ```
 **Step 2. Get the NWM Streamflow data**
 
