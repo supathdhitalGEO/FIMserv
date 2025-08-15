@@ -124,7 +124,7 @@ OWP HAND FIM model runs at HUC-8 watershed scale. User need to identify the HUC8
 fm.DownloadHUC8(huc)    #Download the HUC8 data. By default this command will download the latest version of OWP HAND rasters
 ```
 ```bash
-For earlier version, use
+#for earlier version, use
 fm.DownloadHUC8(huc,version='4.5')
 ```
 **Step 2. Get the NWM Streamflow data**
