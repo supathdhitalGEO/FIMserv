@@ -7,7 +7,7 @@ huc = "03020202"
 def test_runfim():
 
     # Download the data
-    fm.DownloadHUC8(huc)
+    fm.DownloadHUC8(huc, version="4.8")
 
     # # #Downloading the raster without headwaters
     # # fm.DownloadHUC8(huc, stream_order=[5, 6, 7, 8, 9, 10])
@@ -35,14 +35,14 @@ def test_runfim():
 
 
     # # #Get USGS data
-    # fm.getUSGSsitedata(huc, start_date, end_date)
+    fm.getUSGSsitedata(huc, start_date, end_date)
 
     # fm.plotNWMStreamflow(huc, start_date, end_date, feature_id)
     # # #Get the forecast data
     # # #Short range forecast
-    # fm.getNWMForecasteddata(
-    #     huc, forecast_range="shortrange", forecast_date="2024-11-14"
-    # )
+    fm.getNWMForecasteddata(
+        huc, forecast_range="shortrange", forecast_date="2024-11-14"
+    )
 
     # # #Long range forecast
     # # fm.getNWMForecasteddata(
@@ -50,9 +50,9 @@ def test_runfim():
     # # )
 
     # # #Medium range forecast
-    # # fm.getNWMForecasteddata(
-    # #     huc, forecast_range="mediumrange", forecast_date="2024-11-14", hour=6
-    # # )
+    # fm.getNWMForecasteddata(
+    #     huc, forecast_range="mediumrange", forecast_date="2024-11-14", hour=6
+    # )
 
     # Run the FIM model
-    fm.runOWPHANDFIM(huc)
+    # fm.runOWPHANDFIM(huc)

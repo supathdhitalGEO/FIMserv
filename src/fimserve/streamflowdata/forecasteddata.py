@@ -23,6 +23,34 @@ def adjust_hour(hour, forecast_range):
     adjusted_hour = max([h for h in valid_hours if h <= hour] or [valid_hours[0]])
     return adjusted_hour
 
+#Delete the forecast directory if it is empty
+import os, shutil, stat, time
+
+def _rmtree(path: str, retries: int = 3, delay: float = 0.2) -> None:
+    """Robust rmtree: clears read-only bits and retries briefly."""
+    def _onerror(func, p, exc_info):
+        try: os.chmod(p, stat.S_IWRITE)
+        except Exception: pass
+        try: func(p)
+        except Exception: pass
+    for i in range(retries):
+        try:
+            if os.path.exists(path):
+                shutil.rmtree(path, onerror=_onerror)
+            return
+        except Exception:
+            if i == retries - 1:
+                raise
+            time.sleep(delay)
+
+def cleanup_download_tree(download_dir: str, final_date_output_dir: str, csv_tmp_dir: str) -> None:
+    """Remove staging CSVs, the dated netCDF dir, the netCDF root, and the forecast folder."""
+    _rmtree(csv_tmp_dir)
+    _rmtree(final_date_output_dir)
+    _rmtree(os.path.join(download_dir, "netCDF"))
+    _rmtree(download_dir)
+
+
 def download_public_file(url, destination_path):
     try:
         response = requests.get(url)
@@ -315,10 +343,11 @@ def main(
     if not success or final_date_output_dir is None: 
         print("No complete discharge data found after all attempts, try few hours or a day back!")
         try:
-            if os.path.exists(os.path.join(download_dir, "netCDF")):
-                shutil.rmtree(os.path.join(download_dir, "netCDF"))
+            netcdf_root = os.path.join(download_dir, "netCDF")
+            if os.path.exists(netcdf_root):
+                shutil.rmtree(netcdf_root)
         except Exception as e:
-            print(f"Error removing download directory: {e}")
+            print(f"Error during cleanup: {e}")
         return
 
     filter_csv_file_path = os.path.join(output_dir, output_csv_filename)
@@ -338,13 +367,12 @@ def main(
     ProcessForecasts(
         CSVFILES, current_download_date, current_download_hour, forecast_range, sort_by, data_dir, HUC
     )
+    
     print(f"The final discharge values saved to {data_dir}")
     try:
-        shutil.rmtree(CSVFILES)
-        shutil.rmtree(final_date_output_dir)
+        cleanup_download_tree(download_dir, final_date_output_dir, CSVFILES)
     except Exception as e:
-        print(f"Error removing temporary directories: {e}")
-
+        print(f"Cleanup warning: {e}")
 
 def getNWMForecasteddata(
     huc, forecast_range, forecast_date=None, hour=None, sort_by="maximum"
