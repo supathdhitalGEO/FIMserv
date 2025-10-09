@@ -64,10 +64,23 @@ def runfim(code_dir, output_dir, HUC_code, data_dir, depth=False):
             print(f"Inundation mapping for {HUC_code} completed successfully.")
 
             if os.path.exists(inundation_file):
-                shutil.move(inundation_file, inundation_dir)
-
+                dest_file = os.path.join(inundation_dir, os.path.basename(inundation_file))
+                os.makedirs(inundation_dir, exist_ok=True)
+                try:
+                    os.replace(inundation_file, dest_file)
+                except Exception:
+                    if os.path.exists(dest_file):
+                        os.remove(dest_file)
+                    shutil.move(inundation_file, dest_file) 
+                    
             if depth and depth_file and os.path.exists(depth_file):
-                shutil.move(depth_file, inundation_dir)
+                dest_depth = os.path.join(inundation_dir, os.path.basename(depth_file))
+                try:
+                    os.replace(depth_file, dest_depth)
+                except Exception:
+                    if os.path.exists(dest_depth):
+                        os.remove(dest_depth)
+                    shutil.move(depth_file, dest_depth)
 
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
