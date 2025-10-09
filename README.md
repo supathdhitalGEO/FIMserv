@@ -64,7 +64,7 @@ FIMserv/
 Although not mandatory, 
 **we strongly recommend users create a virtual environment and install this package on that virtual environment to avoid the conflict between system dependencies and package dependencies.**
 
-**‼️ If your system doesnot have git, install it first. Download link of git for windows or MacOS: https://git-scm.com/downloads**
+**‼️ If your system doesnot have git, install it first. Download link of git for windows or MacOS: https://git-scm.com/downloads and GDAL (gdal-config) is also needed to setup the build of this installation, install it on your system - https://gdal.org/en/stable/download.html**
 
 **For conda users**
 ```bash
