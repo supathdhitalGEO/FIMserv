@@ -31,12 +31,13 @@ from .vizualizationFIM import vizualizeFIM
 # Statistics
 from .statistics.calculatestatistics import CalculateStatistics
 
-#For intersected HUC8 boundary
+# For intersected HUC8 boundary
 from .intersectedHUC import getIntersectedHUC8ID
 
 
-#evaluation of FIM
+# evaluation of FIM
 from .fimevaluation.fims_setup import FIMService, fim_lookup
+from .fimevaluation.run_fimeval import run_evaluation
 
 
 __all__ = [
@@ -57,4 +58,5 @@ __all__ = [
     "getIntersectedHUC8ID",
     "FIMService",
     "fim_lookup",
+    "run_evaluation",
 ]
