@@ -6,7 +6,7 @@ import shutil
 from collections import defaultdict
 
 # Internal utilities
-from .utilis import (
+from .utils import (
     load_catalog_core,
     download_fim_assets,
     _to_date,
@@ -15,6 +15,7 @@ from .utilis import (
     _record_hour_or_none,
     format_records_for_print,
     find_fims,
+    _record_huc8_list,
 )
 
 from ..datadownload import DownloadHUC8, setup_directories
@@ -42,7 +43,7 @@ class FIMService:
         self._roots_initialized = True
 
     def availability(self, HUCID: str) -> str:
-        from .utilis import availability as _avail
+        from .utils import availability as _avail
 
         return _avail(HUCID)
 
@@ -166,7 +167,7 @@ class FIMService:
                     r
                     for r in records
                     if str(r.get("file_name", "")).strip() == fname
-                    and str(r.get("huc8", "")).strip() == str(huc8).strip()
+                    and str(huc8).strip() in set(_record_huc8_list(r))
                 ]
                 cand_any_huc = [
                     r for r in records if str(r.get("file_name", "")).strip() == fname
@@ -352,7 +353,7 @@ class FIMService:
 
                 # Ensure/generate OWP HAND FIM for that event time and copy to all matching site folders
                 owp_src_copied_any = False
-                if user_dt:
+                if ensure_owp and user_dt:
                     for site in dl_by_site.keys():
                         folder = inputs_root / f"HUC{huc8}_{site}"
                         owp_path = self._ensure_owp_to(
@@ -374,7 +375,7 @@ class FIMService:
                             "downloads": dl_records,
                             "owp_path": (
                                 str(folder / f"NWM_{label}_{huc8}_inundation.tif")
-                                if owp_src_copied_any
+                                if (ensure_owp and owp_src_copied_any)
                                 else None
                             ),
                         }
@@ -383,9 +384,10 @@ class FIMService:
             msg_bits = [
                 f"Downloaded {total_downloaded} benchmark item(s) into '{inputs_root}'."
             ]
-            msg_bits.append(
-                "OWP HAND FIMs ensured per event (based on benchmark timestamps)."
-            )
+            if ensure_owp:
+                msg_bits.append(
+                    "OWP HAND FIMs ensured per event (based on benchmark timestamps)."
+                )
 
             return {
                 "status": "ok",
@@ -521,25 +523,41 @@ class FIMService:
 def fim_lookup(
     HUCID: str,
     date_input: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     file_name: Optional[str] = None,
     run_handfim: bool = False,
     out_dir: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
 ) -> str:
     """
-    - run_handfim=False (default): show a formatted benchmark list.
-    - run_handfim=True: run the OWP HAND process (copy/generate), DO NOT print the benchmark summary;
-      just return the operational message from the process step.
+    Behavior:
+      - If file_name is provided: ALWAYS download the benchmark assets (tif + gpkg) into out_dir (or CWD),
+        regardless of run_handfim.
+      - If run_handfim=True: additionally ensure/generate OWP HAND FIM (copied into the same folder(s)).
+      - If file_name is not provided:
+          * run_handfim=False -> listing mode (query/pretty print)
+          * run_handfim=True  -> process mode (download strict matches + ensure OWP)
     """
     svc = FIMService()
 
-    # List-only mode
+    # If filename is provided, always download benchmark assets.
+    if file_name:
+        rep = svc.process(
+            huc8=HUCID,
+            date_input=date_input,
+            ensure_owp=run_handfim,
+            generate_owp_if_missing=run_handfim,
+            out_dir=out_dir,
+            file_name=file_name,
+        )
+        return rep.get("message", "")
+
+    # If No filename provided: preserve original behavior
     if not run_handfim:
         q = svc.query(
             HUCID=HUCID,
             date_input=date_input,
-            file_name=file_name,
+            file_name=None,
             start_date=start_date,
             end_date=end_date,
         )
@@ -549,7 +567,6 @@ def fim_lookup(
                 "No benchmark FIMs were matched with the information you provided.\n"
                 f"(HUC={HUCID}"
                 f"{', date='+date_input if date_input else ''}"
-                f"{', file_name='+file_name if file_name else ''}"
                 f"{', range=['+str(start_date)+' , '+str(end_date)+']' if (start_date or end_date) else ''})"
             )
 
@@ -561,18 +578,16 @@ def fim_lookup(
             filt.append(f"date '{date_input}'")
         if start_date or end_date:
             filt.append(f"range [{start_date or '-∞'} , {end_date or '∞'}]")
-        if file_name:
-            filt.append(f"file '{file_name}'")
         prefix = header + (" for " + ", ".join(filt) + ":\n" if filt else ":\n")
         return prefix + txt
 
-    # Run/ensure OWP mode
+    #  If run_handfim=True, no filename: process strict matches with date and ensure OWP
     rep = svc.process(
         huc8=HUCID,
         date_input=date_input,
         ensure_owp=True,
         generate_owp_if_missing=True,
         out_dir=out_dir,
-        file_name=file_name,
+        file_name=None,
     )
     return rep.get("message", "")
