@@ -143,10 +143,7 @@ def _context_str(
 
     return ", ".join(parts) if parts else "your filters"
 
-
-def format_records_for_print(
-    records: List[Dict[str, Any]], context: Optional[str] = None
-) -> str:
+def format_records_for_print(records: List[Dict[str, Any]], context: Optional[str] = None) -> str:
     if not records:
         ctx = context or "your filters"
         return f"Benchmark FIMs were not matched for {ctx}."
@@ -159,7 +156,7 @@ def format_records_for_print(
 
     blocks: List[str] = []
     for r in records:
-        tier = r.get("tier") or r.get("quality") or "Unknown"
+        tier = _tier_label(r)
         date_str = _pretty_date_for_print(r)
         res = r.get("resolution_m")
         res_txt = f"{res}m" if res is not None else "NA"
@@ -194,8 +191,89 @@ def _download(bucket: str, key: str, dest_path: str) -> str:
     _S3.download_file(bucket, key, dest_path)
     return dest_path
 
+def _record_huc8_list(rec: Dict[str, Any]) -> List[str]:
+    """
+    Return HUC8s from a record as a normalized list of strings.
 
-# Search FIMs record in database
+    Catalog store:
+      - "huc8": "['03020201','03020202',...]" 
+    """
+    v = rec.get("huc8")
+
+    if v is None:
+        return []
+    if isinstance(v, (list, tuple, set)):
+        out: List[str] = []
+        for x in v:
+            if x is None:
+                continue
+            s = str(x).strip().strip("'").strip('"')
+            if s:
+                out.append(s)
+        return out
+
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return []
+
+        # stringified list like "['03020201', '03020202']"
+        if s.startswith("[") and s.endswith("]"):
+            try:
+                import ast
+                parsed = ast.literal_eval(s)
+                if isinstance(parsed, (list, tuple, set)):
+                    out: List[str] = []
+                    for x in parsed:
+                        if x is None:
+                            continue
+                        t = str(x).strip().strip("'").strip('"')
+                        if t:
+                            out.append(t)
+                    return out
+            except Exception:
+                pass
+
+            inner = s[1:-1].strip()
+            if not inner:
+                return []
+            parts = [p.strip() for p in inner.split(",") if p.strip()]
+            out2: List[str] = []
+            for p in parts:
+                t = p.strip().strip("'").strip('"')
+                if t:
+                    out2.append(t)
+            return out2
+        return [s.strip().strip("'").strip('"')]
+    return [str(v).strip()]
+
+
+def _tier_label(rec: Dict[str, Any]) -> str:
+    """
+    Normalize tier/quality/HWM style labels into a consistent printable string.
+    """
+    raw = rec.get("tier")
+    if raw is None or str(raw).strip() == "":
+        raw = rec.get("quality")
+    if raw is None or str(raw).strip() == "":
+        raw = rec.get("HWM")    #For High Water Marks (HWM)
+
+    s = str(raw).strip() if raw is not None else ""
+    if not s:
+        return "Unknown"
+
+    s_low = s.lower().replace(" ", "").replace("-", "_")
+    #forms: Tier_2, tier2, 2, Tier 2
+    if "tier" in s_low:
+        m = re.search(r"tier[_ ]*(\d+)", s_low)
+        if m:
+            return f"Tier {m.group(1)}"
+        return s.replace("_", " ").strip()
+    if s.isdigit():
+        return f"Tier {s}"
+    return s
+
+#finding the benchmark FIMs
 def find_fims(
     records: List[Dict[str, Any]],
     huc8: str,
@@ -222,7 +300,7 @@ def find_fims(
       - Else (date with hour, or no date): fall back to strict behavior
     """
     huc8 = str(huc8).strip()
-    recs = [r for r in records if str(r.get("huc8", "")).strip() == huc8]
+    recs = [r for r in records if huc8 in set(_record_huc8_list(r))]
 
     if file_name:
         fname = file_name.strip()
@@ -268,7 +346,7 @@ def find_fims(
 
     if date_input and _to_hour_or_none(date_input) is None:
         target_day = _to_date(date_input)
-        out = []
+        out: List[Dict[str, Any]] = []
         for r in recs:
             r_day = _record_day(r)
             if r_day == target_day:
@@ -291,7 +369,7 @@ def find_fims(
 
 def summarize_huc_availability(records: List[Dict[str, Any]], huc8: str) -> str:
     huc8 = str(huc8).strip()
-    recs = [r for r in records if str(r.get("huc8", "")).strip() == huc8]
+    recs = [r for r in records if huc8 in set(_record_huc8_list(r))]
     if not recs:
         return f"No benchmark FIMs on HUC {huc8}."
 
@@ -302,11 +380,12 @@ def summarize_huc_availability(records: List[Dict[str, Any]], huc8: str) -> str:
             with_raw.append(r)
 
     if not with_raw:
-        rps = sorted(
-            {str(r.get("return_period")) for r in recs if r.get("return_period")}
-        )
+        rps = sorted({str(r.get("return_period")) for r in recs if r.get("return_period")})
         if rps:
-            return f"No real flood-based benchmarks on HUC {huc8}. Only synthetic return periods available: {', '.join(rps)}."
+            return (
+                f"No real flood-based benchmarks on HUC {huc8}. "
+                f"Only synthetic return periods available: {', '.join(rps)}."
+            )
         return f"No real flood-based benchmarks on HUC {huc8}."
 
     day_set, hour_set = set(), set()
@@ -375,13 +454,16 @@ def download_fim_assets(record: Dict[str, Any], dest_dir: str) -> Dict[str, Any]
 def build_huc_event_dict(records: List[Dict[str, Any]]) -> Dict[str, List[str]]:
     d: Dict[str, List[str]] = {}
     for r in records:
-        huc = str(r.get("huc8"))
+        hucs = _record_huc8_list(r)
+        if not hucs:
+            continue
         day = _record_day(r)
         if not day:
             continue
         hour = _record_hour_or_none(r)
         ts = day.isoformat() if hour is None else f"{day:%Y-%m-%d} {hour:02d}:00:00"
-        d.setdefault(huc, []).append(ts)
+        for huc in hucs:
+            d.setdefault(str(huc), []).append(ts)
     for k in list(d.keys()):
         d[k] = sorted(set(d[k]))
     return d
@@ -412,7 +494,7 @@ def bmFIMFindandDownload(
     catalog = load_catalog_core()
     records = catalog.get("records", [])
 
-    # STRICT set (used for status/logic/downloads)
+    # STRICT set
     strict_matches = find_fims(
         records,
         huc8=HUC8,
@@ -423,7 +505,7 @@ def bmFIMFindandDownload(
         relaxed_for_print=False,
     )
 
-    # RELAXED set (printing only)
+    # RELAXED set
     relaxed_records_for_print = find_fims(
         records,
         huc8=HUC8,

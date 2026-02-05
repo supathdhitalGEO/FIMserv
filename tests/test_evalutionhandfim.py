@@ -5,13 +5,13 @@ import pandas as pd
 # Look for the benchmark FIM data for the HUC8 and event date
 def test_bm_fimlookup():
     out = fm.fim_lookup(
-        HUCID="07070005",
-        date_input="2019-05-30 23:00:00",  # If user is more specific then they can pass date (with hour if known) along with HUC8
-        run_handfim=True,  # It will look for the OWP HAND FIM for the mentioned HUC8 and date; if not found it will download and generate the OWP HAND FIM
-        file_name="S1A_9_6m_20190530T23573_910244W430506N_BM.tif",  # If user passes a specific filename, it will download that and assume it is the right benchmark
-        out_dir="./FIMserv/test",  # If user wants to save the benchmark FIM in a specific directory
-        # start_date="2024-06-20",  # If user is not sure of the exact date then they can pass a range of dates
+        HUCID="10240011",
+        # date_input="2019-06-15",  # If user is more specific then they can pass date (with hour if known) along with HUC8
+        # start_date="2017-06-20", #If user is not sure of the exact date then they can pass a range of dates
         # end_date="2024-06-25",
+        run_handfim=True,  #It will look for the owp hand fim for the mentioned HUC8 and date, if not found it will download and generate the owp hand fim; default is False
+        file_name= "S1A_9_2m_20190615T00210_945738W393944N_BM.tif", #If user pass the specific filename, it will download that and assume that this is the right benchmark, else based on exact match of date it will look for the benchmark
+        out_dir= '../test_FIMeval', #Required if user wants to download the benchmark FIM data
     )
     print(out)
 
