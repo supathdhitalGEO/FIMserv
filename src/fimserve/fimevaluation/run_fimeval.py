@@ -28,8 +28,6 @@ class run_evaluation:
     target_crs : Optional[str]; CRS to reproject FIM rasters to (e.g., "EPSG:3857").
     target_resolution : Optional[float]; Output raster resolution (units depend on CRS).
     method_name : Optional[str]; Name of the evaluation method to evaluate. Defaults to "AOI".
-    countryISO : Optional[str]; ISO-3 country code used only when downloading footprints from GEE.
-    geeprojectID : Optional[str]; Google Earth Engine project ID for footprint download (if no local file provided).
     print_graphs : bool; If True, generates and saves contingency maps and evaluation metric plots.
     Evalwith_BF : bool; If True, performs building-footprint-based exposure evaluation.
     """
@@ -43,8 +41,6 @@ class run_evaluation:
         target_crs: Optional[str] = None,
         target_resolution: Optional[float] = None,
         method_name: Optional[str] = None, #By default it will use 'AOI' which is downloaded but incase user want to explore different method they can pass here
-        countryISO: Optional[str] = None,
-        geeprojectID: Optional[str] = None,
         print_graphs: bool = False,
         Evalwith_BF: bool = False,  #If user want to run evaluation with building footprint
         ):
@@ -68,8 +64,6 @@ class run_evaluation:
             self.method_name = 'AOI'
         else:
             self.method_name = method_name
-        self.countryISO = countryISO
-        self.geeprojectID = geeprojectID
         self.Evalwith_BF = Evalwith_BF
         self.print_graphs = print_graphs
         
@@ -105,8 +99,6 @@ class run_evaluation:
                     main_dir=self.Main_dir,
                     method_name=self.method_name,
                     output_dir=self.output_dir,
-                    country=self.countryISO,
-                    geeprojectID=self.geeprojectID,
                     building_footprint=self.building_footprint,
                 )
             except Exception as e:

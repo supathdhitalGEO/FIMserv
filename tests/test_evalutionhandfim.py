@@ -6,7 +6,7 @@ import pandas as pd
 def test_bm_fimlookup():
     out = fm.fim_lookup(
         HUCID="10240011",
-        # date_input="2019-06-15",  # If user is more specific then they can pass date (with hour if known) along with HUC8
+        date_input="2019-06-15",  # If user is more specific then they can pass date (with hour if known) along with HUC8
         # start_date="2017-06-20", #If user is not sure of the exact date then they can pass a range of dates
         # end_date="2024-06-25",
         run_handfim=True,  #It will look for the owp hand fim for the mentioned HUC8 and date, if not found it will download and generate the owp hand fim; default is False
@@ -19,16 +19,14 @@ def test_bm_fimlookup():
 # After finalizing the benchmark FIM data user can run evaluation
 def test_run_fimeval():
     fm.run_evaluation(
-        Main_dir="./FIMserv/test",   # If user uses their own input directory where FIM outputs; basically out_dir in fim_lookup is Main_dir here
+        Main_dir="../test_FIMeval",   # If user uses their own input directory where FIM outputs; basically out_dir in fim_lookup is Main_dir here
         output_dir=None,             # Folder where evaluation results will be saved
         shapefile_path=None,         # AOI shapefile or vector file used to clip data during evaluation. Internally uses the geopackage within folder.
         PWB_dir=None,                # Directory containing the Permanent Water Bodies.
-        building_footprint="./AOI/building_footprint.gpkg",  # Local building footprint dataset (GeoJSON/Shapefile) for building-level exposure evaluation.
+        building_footprint=None,  # Local building footprint dataset (GeoJSON/Shapefile) for building-level exposure evaluation., else it will use the arcgis online hosted building footprint using REST API
         target_crs=None,             # CRS to reproject FIM rasters to (e.g., "EPSG:3857").
         target_resolution=None,      # Output raster resolution (units depend on CRS).
         method_name=None,            # By default it will use 'AOI'; to explore different methods pass here
-        countryISO=None,             # ISO-3 country code used only when downloading footprints from GEE.
-        geeprojectID=None,           # Google Earth Engine project ID for footprint download (if no local file provided).
         print_graphs=True,           # If True, generates and saves contingency maps and evaluation metric plots.
         Evalwith_BF=True,            # If True, run evaluation with building footprint
     )
