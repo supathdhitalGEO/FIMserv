@@ -1,11 +1,12 @@
-#Import the libraries and packages
+# Import the libraries and packages
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import pytorch_lightning as pl
 import torchmetrics
 
-#IOU loss
+
+# IOU loss
 class IoULoss(nn.Module):
     def __init__(self, eps=1e-6):
         super(IoULoss, self).__init__()
@@ -24,23 +25,24 @@ class IoULoss(nn.Module):
 
         iou = (intersection + self.eps) / (union + self.eps)
         return 1 - iou
-    
+
+
 # Attention Block
 class AttentionBlock(nn.Module):
     def __init__(self, F_g, F_l, F_int):
         super(AttentionBlock, self).__init__()
         self.W_g = nn.Sequential(
             nn.Conv2d(F_g, F_int, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.BatchNorm2d(F_int)
+            nn.BatchNorm2d(F_int),
         )
         self.W_x = nn.Sequential(
             nn.Conv2d(F_l, F_int, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.BatchNorm2d(F_int)
+            nn.BatchNorm2d(F_int),
         )
         self.psi = nn.Sequential(
             nn.Conv2d(F_int, 1, kernel_size=1, stride=1, padding=0, bias=True),
             nn.BatchNorm2d(1),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
         self.relu = nn.ReLU(inplace=True)
 
@@ -51,9 +53,17 @@ class AttentionBlock(nn.Module):
         psi = self.psi(psi)
         return x * psi
 
+
 # Attention U-Net Model Initialization
 class AttentionUNet(pl.LightningModule):
-    def __init__(self, channel: int, num_classes: int = 2, task: str = 'binary', lr: float = 0.001, weight_decay : float = 0.0001) -> None:
+    def __init__(
+        self,
+        channel: int,
+        num_classes: int = 2,
+        task: str = "binary",
+        lr: float = 0.001,
+        weight_decay: float = 0.0001,
+    ) -> None:
         super().__init__()
 
         # Defining the model
@@ -93,9 +103,11 @@ class AttentionUNet(pl.LightningModule):
         # Define metric
         alpha = 0.8
         beta = 0.2
-        self.loss_fn = nn.BCEWithLogitsLoss(reduction='mean')
+        self.loss_fn = nn.BCEWithLogitsLoss(reduction="mean")
         # self.loss_fn = lambda x, y: alpha * self.bce(x, y) + beta * IoULoss()(x, y)
-        self.accuracy = torchmetrics.Accuracy(task=self.task, num_classes=self.num_classes)
+        self.accuracy = torchmetrics.Accuracy(
+            task=self.task, num_classes=self.num_classes
+        )
 
         # Initialize containers for predictions and labels
         self.val_preds = []
@@ -108,7 +120,7 @@ class AttentionUNet(pl.LightningModule):
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
         )
 
     def forward(self, x):
@@ -164,24 +176,19 @@ class AttentionUNet(pl.LightningModule):
         acc = self.accuracy(y_hat, y)
         self.log("val_acc", acc, on_step=False, on_epoch=True, prog_bar=True)
         return loss
-    
-    #PLATEAU LEARNING RATE
+
+    # PLATEAU LEARNING RATE
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.lr)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            mode='min',               
-            factor=0.5,              
-            patience=3,              
-            min_lr=1e-6,
-            verbose=True
+            optimizer, mode="min", factor=0.5, patience=3, min_lr=1e-6, verbose=True
         )
         return {
-            'optimizer': optimizer,
-            'lr_scheduler': {
-                'scheduler': scheduler,
-                'monitor': 'val_loss',  
-                'interval': 'epoch',
-                'frequency': 1
-            }
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "monitor": "val_loss",
+                "interval": "epoch",
+                "frequency": 1,
+            },
         }

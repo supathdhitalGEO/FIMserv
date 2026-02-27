@@ -34,7 +34,8 @@ dependencies = [
     "notebook>=6.5.7",
     "geocube<=0.7.1",
     "geopandas>=0.14.3",
-    "fimeval>=0.1.59"
+    "fimeval>=0.1.59",
+    "setuptools>=82.0.0",
 ]
 
 [project.optional-dependencies]

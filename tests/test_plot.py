@@ -1,6 +1,5 @@
 import fimserve as fm
 
-
 huc = "03020202"
 
 # Mention the data range  so that it will plot that specific range

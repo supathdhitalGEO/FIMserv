@@ -1,3 +1,8 @@
+"""
+Date Updated: 28 Feb, 2026
+Author: Supath Dhital (sdhital@crimson.ua.edu)
+"""
+
 from __future__ import annotations
 from typing import Optional, Dict, Any, List, Tuple, DefaultDict
 from pathlib import Path
@@ -16,6 +21,10 @@ from .utils import (
     format_records_for_print,
     find_fims,
     _record_huc8_list,
+    _folder_from_record,
+    _list_prefix,
+    _download,
+    BUCKET,
 )
 
 from ..datadownload import DownloadHUC8, setup_directories
@@ -60,6 +69,139 @@ class FIMService:
             return p
         return None
 
+    # Return-period helpers
+    def _flows_inputs_dir(self) -> Path:
+        """
+        Fixed location to store return-period flow CSVs.
+        User requested: ./data/inputs
+        """
+        p = Path(os.getcwd()) / "data" / "inputs"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    def _download_return_period_flows_csv(self, huc8: str, return_period: int) -> Path:
+        """
+        Download the Tier_4 BLE flow CSV for this HUC8 + return period into ./data/inputs.
+        This is used instead of event-based NWM retrospective download.
+        """
+        catalog = load_catalog_core()
+        records = catalog.get("records", [])
+
+        # Find matching records by HUC and return period (Tier_4 BLE records have no date)
+        matches = find_fims(
+            records=records,
+            huc8=str(huc8).strip(),
+            date_input=None,
+            file_name=None,
+            start_date=None,
+            end_date=None,
+            return_period=int(return_period),
+            relaxed_for_print=False,
+        )
+
+        if not matches:
+            raise FileNotFoundError(
+                f"No benchmark record found for HUC {huc8} with return period {return_period}."
+            )
+
+        # Prefer Tier_4 records if present
+        tier4 = []
+        for r in matches:
+            t = (
+                str(r.get("tier") or r.get("quality") or "")
+                .strip()
+                .lower()
+                .replace(" ", "")
+            )
+            if t.startswith("tier_4") or t.startswith("tier4"):
+                tier4.append(r)
+        rec = tier4[0] if tier4 else matches[0]
+
+        # List keys in that S3 prefix/folder
+        prefix = _folder_from_record(rec)
+        keys = _list_prefix(prefix)
+
+        tag = f"FLOWS_{int(return_period)}YR".upper()
+        flow_keys = []
+        for k in keys:
+            if k.lower().endswith(".csv") and tag in os.path.basename(k).upper():
+                flow_keys.append(k)
+
+        if not flow_keys:
+            raise FileNotFoundError(
+                f"No {tag} CSV found under S3 prefix '{prefix}' for HUC {huc8}."
+            )
+
+        flows_dir = self._flows_inputs_dir()
+        src_key = flow_keys[0]
+        local = flows_dir / os.path.basename(src_key)
+
+        if not local.exists():
+            _download(BUCKET, src_key, str(local))
+
+        return local
+
+    # For the existing filename search
+    def _find_any_owp_for_return_period(
+        self, huc8: str, return_period: int
+    ) -> Optional[Path]:
+        """
+        Look inside the inundation folder for a BLE return-period inundation tif.
+        Match any tif whose name contains both the HUC8 and {return_period}YR tokens.
+        e.g. BLE_HUC_11110205_FLOWS_100YR_921950W351837N_inundation.tif
+        """
+        dirp = self.owp_root / f"flood_{huc8}" / f"{huc8}_inundation"
+        if not dirp.exists():
+            return None
+        rp_tag = f"{return_period}YR"
+        cand = [
+            p
+            for p in dirp.glob("BLE*_inundation.tif")
+            if huc8 in p.name and rp_tag in p.name.upper()
+        ]
+        if not cand:
+            return None
+        return sorted(cand, key=lambda p: p.stat().st_mtime, reverse=True)[0]
+
+    def _generate_owp_return_period(
+        self,
+        huc8: str,
+        return_period: int,
+        dest_dirs: List[str],
+    ) -> Optional[str]:
+        self._ensure_roots()
+
+        rp = int(return_period)
+
+        # If already generated, just copy to dest dirs -- same logic as the date-based path
+        existing = self._find_any_owp_for_return_period(huc8, rp)
+        if existing and existing.exists():
+            copied_any: Optional[str] = None
+            for d in dest_dirs:
+                copied_any = self._copy_to_dest(existing, d)
+            return copied_any
+
+        print(f"Generating return-period HAND FIM for HUC {huc8} (RP={rp})...")
+        DownloadHUC8(huc8, version="4.8")
+
+        flows_csv = self._download_return_period_flows_csv(huc8, rp)
+        print(f"Downloaded return-period flows CSV to '{flows_csv}'.")
+
+        runOWPHANDFIM(huc8)
+
+        # After run, re-check the inundation folder for the produced tif
+        produced = self._find_any_owp_for_return_period(huc8, rp)
+        if not produced:
+            return None
+
+        # Copy produced tif into each destination folder
+        copied_any: Optional[str] = None
+        for d in dest_dirs:
+            copied_any = self._copy_to_dest(produced, d)
+
+        return copied_any
+
+    # Query
     def query(
         self,
         HUCID: str,
@@ -67,6 +209,7 @@ class FIMService:
         file_name: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
+        return_period: Optional[int] = None,
     ) -> Dict[str, Any]:
         catalog = load_catalog_core()
         records = catalog.get("records", [])
@@ -78,6 +221,7 @@ class FIMService:
             huc8=huc8,
             date_input=date_input,
             file_name=file_name,
+            return_period=return_period,
             relaxed_for_print=False,
         )
 
@@ -89,6 +233,7 @@ class FIMService:
             file_name=file_name,
             start_date=start_date,
             end_date=end_date,
+            return_period=return_period,
             relaxed_for_print=True,
         )
 
@@ -144,6 +289,7 @@ class FIMService:
         generate_owp_if_missing: bool = True,
         out_dir: Optional[str] = None,
         file_name: Optional[str] = None,
+        return_period: Optional[int] = None,
     ) -> Dict[str, Any]:
         catalog = load_catalog_core()
         records = catalog.get("records", [])
@@ -154,6 +300,7 @@ class FIMService:
             file_name=file_name,
             start_date=None,
             end_date=None,
+            return_period=return_period,
             relaxed_for_print=False,
         )
         if out_dir:
@@ -161,10 +308,10 @@ class FIMService:
         else:
             inputs_root = Path(os.getcwd()) / "FIMevaluation_inputs"
             inputs_root.mkdir(parents=True, exist_ok=True)
-            
+
         self._ensure_roots()
 
-        # If strict match missing but filename given → fallback to filename-based lookup
+        # If strict match missing but filename given --> fallback to filename-based lookup
         if not strict_matches:
             if file_name:
                 fname = file_name.strip()
@@ -201,7 +348,9 @@ class FIMService:
                 folder = inputs_root / f"HUC{huc8}_{site}"
                 folder.mkdir(parents=True, exist_ok=True)
 
-                dl = download_fim_assets(rec, str(folder))
+                dl = download_fim_assets(
+                    rec, str(folder), return_period=None, download_flows=False
+                )
 
                 owp_path = None
                 if ensure_owp and date_input:
@@ -210,6 +359,7 @@ class FIMService:
                         date_input,
                         str(folder),
                         generate_if_missing=generate_owp_if_missing,
+                        return_period=return_period,
                     )
 
                 msg = (
@@ -238,159 +388,119 @@ class FIMService:
                     "matches": [rec],
                 }
 
-            # No file_name provided → truly no match
+            # No file_name provided --> truly no match
             msg = f"No strict benchmark match for HUC {huc8}" + (
                 f" and '{date_input}'" if date_input else ""
             )
             return {"status": "not_found", "message": msg, "folders": [], "matches": []}
 
-        total_downloaded = 0
-        ensured = False
-        ensured_path: Optional[str] = None
+        # Group records by their event label:
+        #   - if date_input is given, all records share the same user-supplied label
+        #   - otherwise, derive each record's label from its own timestamp
+        label_map: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for rec in strict_matches:
+            label = (
+                self._date_label_from_user(date_input)
+                if date_input
+                else self._date_label_for_record(rec)
+            )
+            label_map[label].append(rec)
+
         folders_out: List[Dict[str, Any]] = []
+        total_downloaded = 0
+        ran_return_period = False
 
-        if date_input:
-            # Per-site folders
+        for label, recs in sorted(label_map.items()):
+            # Build per-site download map and create output folders
             dl_by_site: Dict[str, List[Dict[str, Any]]] = {}
-            folders_out = []
-            total_downloaded = 0
-
-            # Create folder per site and download each record into its site folder
-            for rec in strict_matches:
+            for rec in recs:
                 site = self._site_of(rec)
                 folder = inputs_root / f"HUC{huc8}_{site}"
                 folder.mkdir(parents=True, exist_ok=True)
 
-                dl = download_fim_assets(rec, str(folder))
-                (dl_by_site.setdefault(site, [])).append(
-                    {"record": rec, "downloads": dl}
+                dl = download_fim_assets(
+                    rec, str(folder), return_period=None, download_flows=False
                 )
+                dl_by_site.setdefault(site, []).append({"record": rec, "downloads": dl})
                 if dl.get("tif") or dl.get("gpkg_files"):
                     total_downloaded += 1
 
-            # Ensure/copy (or generate) the single OWP raster for this event time into EVERY site folder
+            # Derive a real datetime string for OWP generation from this label
+            try:
+                if len(label) == 8:  # YYYYMMDD
+                    user_dt: Optional[str] = f"{label[:4]}-{label[4:6]}-{label[6:]}"
+                elif len(label) >= 10:  # YYYYMMDDHHMMSS or similar
+                    user_dt = f"{label[:4]}-{label[4:6]}-{label[6:8]}T{label[8:10]}"
+                else:
+                    user_dt = None
+            except Exception:
+                user_dt = None
+
+            # Return-period run mode (Tier_4 has no timestamps); run only once across all labels
+            if ensure_owp and (return_period is not None) and (not ran_return_period):
+                dest_dirs = [
+                    str(inputs_root / f"HUC{huc8}_{site}") for site in dl_by_site
+                ]
+                self._generate_owp_return_period(huc8, int(return_period), dest_dirs)
+                ran_return_period = True
+
+            # Ensure/generate OWP HAND FIM for that event time and copy to all matching site folders
             owp_src_copied_any = False
-            for site, dl_records in dl_by_site.items():
-                folder = inputs_root / f"HUC{huc8}_{site}"
-                owp_path = None
-                if ensure_owp:
+            if ensure_owp and user_dt:
+                for site in dl_by_site:
+                    folder = inputs_root / f"HUC{huc8}_{site}"
                     owp_path = self._ensure_owp_to(
                         huc8,
-                        date_input,
+                        user_dt,
                         str(folder),
                         generate_if_missing=generate_owp_if_missing,
+                        return_period=return_period,
                     )
                     owp_src_copied_any = owp_src_copied_any or bool(owp_path)
 
+            # Record outputs for this label
+            for site, dl_records in dl_by_site.items():
+                folder = inputs_root / f"HUC{huc8}_{site}"
                 folders_out.append(
                     {
-                        "label": site,
+                        "label": site if date_input else f"{label}:{site}",
                         "folder": str(folder),
                         "records": [d["record"] for d in dl_records],
                         "downloads": dl_records,
-                        "owp_path": owp_path,
+                        "owp_path": (
+                            str(folder / f"NWM_{label}_{huc8}_inundation.tif")
+                            if (ensure_owp and owp_src_copied_any)
+                            else None
+                        ),
                     }
                 )
 
-            msg_bits = [
-                f"Downloaded {total_downloaded} benchmark item(s) into '{inputs_root}'."
-            ]
-            if ensure_owp:
-                if owp_src_copied_any:
-                    msg_bits.append(
-                        f"OWP HAND FIM ensured for '{date_input}' (copied/generated to each site folder)."
-                    )
-                else:
-                    msg_bits.append(
-                        f"OWP HAND FIM not found for '{date_input}' and was not generated."
-                    )
-
-            return {
-                "status": "ok",
-                "message": " ".join(msg_bits),
-                "folders": folders_out,
-                "matches": strict_matches,
-            }
-        else:
-            # Group benchmarks by their event timestamp
-            groups: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
-            for r in strict_matches:
-                label = self._date_label_for_record(r)
-                groups[label].append(r)
-
-            folders_out = []
-            total_downloaded = 0
-
-            for label, recs in sorted(groups.items()):
-                # Create per-site folders for this event
-                dl_by_site: Dict[str, List[Dict[str, Any]]] = {}
-                for rec in recs:
-                    site = self._site_of(rec)
-                    folder = inputs_root / f"HUC{huc8}_{site}"
-                    folder.mkdir(parents=True, exist_ok=True)
-
-                    dl = download_fim_assets(rec, str(folder))
-                    (dl_by_site.setdefault(site, [])).append(
-                        {"record": rec, "downloads": dl}
-                    )
-                    if dl.get("tif") or dl.get("gpkg_files"):
-                        total_downloaded += 1
-
-                # Convert this label to a real date/hour for OWP generation
-                try:
-                    if len(label) == 8:  # YYYYMMDD
-                        user_dt = f"{label[:4]}-{label[4:6]}-{label[6:]}"
-                    elif len(label) >= 10:  # YYYYMMDDHHMMSS or similar
-                        user_dt = f"{label[:4]}-{label[4:6]}-{label[6:8]}T{label[8:10]}"
-                    else:
-                        user_dt = None
-                except Exception:
-                    user_dt = None
-
-                # Ensure/generate OWP HAND FIM for that event time and copy to all matching site folders
-                owp_src_copied_any = False
-                if ensure_owp and user_dt:
-                    for site in dl_by_site.keys():
-                        folder = inputs_root / f"HUC{huc8}_{site}"
-                        owp_path = self._ensure_owp_to(
-                            huc8,
-                            user_dt,
-                            str(folder),
-                            generate_if_missing=generate_owp_if_missing,
-                        )
-                        owp_src_copied_any = owp_src_copied_any or bool(owp_path)
-
-                # Record outputs
-                for site, dl_records in dl_by_site.items():
-                    folder = inputs_root / f"HUC{huc8}_{site}"
-                    folders_out.append(
-                        {
-                            "label": f"{label}:{site}",
-                            "folder": str(folder),
-                            "records": [d["record"] for d in dl_records],
-                            "downloads": dl_records,
-                            "owp_path": (
-                                str(folder / f"NWM_{label}_{huc8}_inundation.tif")
-                                if (ensure_owp and owp_src_copied_any)
-                                else None
-                            ),
-                        }
-                    )
-
-            msg_bits = [
-                f"Downloaded {total_downloaded} benchmark item(s) into '{inputs_root}'."
-            ]
-            if ensure_owp:
+        msg_bits = [
+            f"Downloaded {total_downloaded} benchmark item(s) into '{inputs_root}'."
+        ]
+        if ensure_owp:
+            if return_period is not None:
+                msg_bits.append(
+                    f"OWP HAND FIM generated for {return_period} year return period."
+                )
+            elif date_input:
+                any_owp = any(f.get("owp_path") for f in folders_out)
+                msg_bits.append(
+                    f"OWP HAND FIM ensured for '{date_input}' (copied/generated to each site folder)."
+                    if any_owp
+                    else f"OWP HAND FIM not found for '{date_input}' and was not generated."
+                )
+            else:
                 msg_bits.append(
                     "OWP HAND FIMs ensured per event (based on benchmark timestamps)."
                 )
 
-            return {
-                "status": "ok",
-                "message": " ".join(msg_bits),
-                "folders": folders_out,
-                "matches": strict_matches,
-            }
+        return {
+            "status": "ok",
+            "message": " ".join(msg_bits),
+            "folders": folders_out,
+            "matches": strict_matches,
+        }
 
     # Internals
     @staticmethod
@@ -411,7 +521,12 @@ class FIMService:
         return f"{day:%Y%m%d}" if hh is None else f"{day:%Y%m%d}{hh:02d}0000"
 
     def _ensure_owp_to(
-        self, huc8: str, user_dt: str, dest_dir: str, generate_if_missing: bool
+        self,
+        huc8: str,
+        user_dt: str,
+        dest_dir: str,
+        generate_if_missing: bool,
+        return_period: Optional[int] = None,
     ) -> Optional[str]:
         """
         Idempotent ensure:
@@ -433,7 +548,7 @@ class FIMService:
 
         # Generate if allowed
         if generate_if_missing:
-            produced = self._generate_owp(huc8, user_dt)
+            produced = self._generate_owp(huc8, user_dt, return_period=return_period)
             if produced and produced.exists():
                 return self._copy_to_dest(produced, dest_dir)
             # day-only fallback: after run, accept any-hour tif for the day
@@ -459,15 +574,6 @@ class FIMService:
         )
         return self.owp_root / f"flood_{huc8}" / f"{huc8}_inundation" / name
 
-    def _find_existing_owp_tif(self, huc8: str, user_dt: str) -> Optional[Path]:
-        ymd, timestr = self._ymd_timestr_from_user(user_dt)
-        cand = self._expected_owp_path(huc8, ymd, timestr)
-        if cand.exists():
-            return cand
-        if timestr is None:
-            return None
-        return None
-
     @staticmethod
     def _copy_to_dest(src: Path, dest_dir: str) -> str:
         dst_dir = Path(dest_dir)
@@ -476,7 +582,9 @@ class FIMService:
         shutil.copy2(src, dst)
         return str(dst)
 
-    def _generate_owp(self, huc8: str, user_dt: str) -> Optional[Path]:
+    def _generate_owp(
+        self, huc8: str, user_dt: str, return_period: Optional[int] = None
+    ) -> Optional[Path]:
         """
         Idempotent generation:
         - Skip running if the target file (or any-hour for day-only) already exists.
@@ -503,7 +611,16 @@ class FIMService:
         hh = _to_hour_or_none(user_dt)
         stamp = f"{day:%Y-%m-%d}" if hh is None else f"{day:%Y-%m-%d} {hh:02d}:00:00"
 
-        getNWMretrospectivedata(huc_event_dict={str(huc8): [stamp]})
+        if return_period is None:
+            getNWMretrospectivedata(huc_event_dict={str(huc8): [stamp]})
+        else:
+            # For return period mode we do not download event-based NWM retrospective discharge
+            rp = int(return_period)
+            _ = self._download_return_period_flows_csv(huc8, rp)
+            print(
+                f"Return period {return_period} provided from AWS S3 --> skipping event based NWM retrospective download."
+            )
+
         runOWPHANDFIM(huc8)
 
         # After run, re-check
@@ -521,6 +638,7 @@ def fim_lookup(
     date_input: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    return_period: Optional[int] = None,
     file_name: Optional[str] = None,
     run_handfim: bool = False,
     out_dir: Optional[str] = None,
@@ -545,6 +663,7 @@ def fim_lookup(
             generate_owp_if_missing=run_handfim,
             out_dir=out_dir,
             file_name=file_name,
+            return_period=return_period,
         )
         return rep.get("message", "")
 
@@ -556,6 +675,7 @@ def fim_lookup(
             file_name=None,
             start_date=start_date,
             end_date=end_date,
+            return_period=return_period,
         )
         txt = q.get("printable") or ""
         if not txt.strip():
@@ -585,5 +705,6 @@ def fim_lookup(
         generate_owp_if_missing=True,
         out_dir=out_dir,
         file_name=None,
+        return_period=return_period,
     )
     return rep.get("message", "")

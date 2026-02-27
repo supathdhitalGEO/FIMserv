@@ -117,6 +117,7 @@ def _context_str(
     file_name: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    return_period: Optional[int] = None,
 ) -> str:
     """
     Builds a readable context summary for printing headers.
@@ -141,9 +142,15 @@ def _context_str(
     if file_name:
         parts.append(f"file '{file_name}'")
 
+    if return_period is not None:
+        parts.append(f"return period {int(return_period)}")
+
     return ", ".join(parts) if parts else "your filters"
 
-def format_records_for_print(records: List[Dict[str, Any]], context: Optional[str] = None) -> str:
+
+def format_records_for_print(
+    records: List[Dict[str, Any]], context: Optional[str] = None
+) -> str:
     if not records:
         ctx = context or "your filters"
         return f"Benchmark FIMs were not matched for {ctx}."
@@ -161,12 +168,28 @@ def format_records_for_print(records: List[Dict[str, Any]], context: Optional[st
         res = r.get("resolution_m")
         res_txt = f"{res}m" if res is not None else "NA"
         fname = r.get("file_name") or "NA"
-        blocks.append(
-            f"Data Tier: {tier}\n"
-            f"Benchmark FIM date: {date_str}\n"
-            f"Spatial Resolution: {res_txt}\n"
-            f"Raster Filename in DB: {fname}"
-        )
+
+        rp = r.get("return_period")
+        rp_txt = f"{rp}yr" if rp is not None else "NA"
+
+        # Decide which one to print:
+        # - If date is known (not "unknown") => event-based benchmark => print date only
+        # - Else if return_period exists => RP benchmark => print RP only
+        lines = [
+            f"Data Tier: {tier}",
+            f"Spatial Resolution: {res_txt}",
+            f"Raster Filename in DB: {fname}",
+        ]
+
+        if date_str != "unknown":
+            lines.insert(1, f"Benchmark FIM date: {date_str}")
+        elif rp is not None:
+            lines.insert(1, f"Return Period: {rp_txt}")
+        else:
+            # fallback if neither is available
+            lines.insert(1, "Benchmark FIM date: unknown")
+
+        blocks.append("\n".join(lines))
 
     return (header + "\n\n".join(blocks)).strip()
 
@@ -191,12 +214,13 @@ def _download(bucket: str, key: str, dest_path: str) -> str:
     _S3.download_file(bucket, key, dest_path)
     return dest_path
 
+
 def _record_huc8_list(rec: Dict[str, Any]) -> List[str]:
     """
     Return HUC8s from a record as a normalized list of strings.
 
     Catalog store:
-      - "huc8": "['03020201','03020202',...]" 
+      - "huc8": "['03020201','03020202',...]"
     """
     v = rec.get("huc8")
 
@@ -221,6 +245,7 @@ def _record_huc8_list(rec: Dict[str, Any]) -> List[str]:
         if s.startswith("[") and s.endswith("]"):
             try:
                 import ast
+
                 parsed = ast.literal_eval(s)
                 if isinstance(parsed, (list, tuple, set)):
                     out: List[str] = []
@@ -256,14 +281,14 @@ def _tier_label(rec: Dict[str, Any]) -> str:
     if raw is None or str(raw).strip() == "":
         raw = rec.get("quality")
     if raw is None or str(raw).strip() == "":
-        raw = rec.get("HWM")    #For High Water Marks (HWM)
+        raw = rec.get("HWM")  # For High Water Marks (HWM)
 
     s = str(raw).strip() if raw is not None else ""
     if not s:
         return "Unknown"
 
     s_low = s.lower().replace(" ", "").replace("-", "_")
-    #forms: Tier_2, tier2, 2, Tier 2
+    # forms: Tier_2, tier2, 2, Tier 2
     if "tier" in s_low:
         m = re.search(r"tier[_ ]*(\d+)", s_low)
         if m:
@@ -273,7 +298,8 @@ def _tier_label(rec: Dict[str, Any]) -> str:
         return f"Tier {s}"
     return s
 
-#finding the benchmark FIMs
+
+# finding the benchmark FIMs
 def find_fims(
     records: List[Dict[str, Any]],
     huc8: str,
@@ -281,6 +307,7 @@ def find_fims(
     file_name: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    return_period: Optional[int] = None,
     relaxed_for_print: bool = False,
 ) -> List[Dict[str, Any]]:
     """
@@ -293,6 +320,7 @@ def find_fims(
           * date-only -> ONLY day-only benchmarks
           * date+hour -> ONLY exact-hour benchmarks
       - Ignores start_date/end_date
+      - return_period - is especially for the BLE HUC 8 level dataset, which correponsing flows are saved within the s3 bucket
 
     Relaxed (relaxed_for_print=True) — **printing only**:
       - If start_date/end_date: ALL HUC records whose record-day is in [start, end] (hour ignored)
@@ -301,6 +329,19 @@ def find_fims(
     """
     huc8 = str(huc8).strip()
     recs = [r for r in records if huc8 in set(_record_huc8_list(r))]
+
+    # If return period is provided, filters is applied based on the return period.
+    if return_period is not None:
+        trp = int(return_period)
+
+        def _rp_match(r):
+            v = r.get("return_period", None)
+            try:
+                return int(v) == trp
+            except Exception:
+                return False
+
+        recs = [r for r in recs if _rp_match(r)]
 
     if file_name:
         fname = file_name.strip()
@@ -363,6 +404,7 @@ def find_fims(
         file_name=None,
         start_date=None,
         end_date=None,
+        return_period=return_period,
         relaxed_for_print=False,
     )
 
@@ -380,7 +422,9 @@ def summarize_huc_availability(records: List[Dict[str, Any]], huc8: str) -> str:
             with_raw.append(r)
 
     if not with_raw:
-        rps = sorted({str(r.get("return_period")) for r in recs if r.get("return_period")})
+        rps = sorted(
+            {str(r.get("return_period")) for r in recs if r.get("return_period")}
+        )
         if rps:
             return (
                 f"No real flood-based benchmarks on HUC {huc8}. "
@@ -423,12 +467,15 @@ def _tif_key_from_record(rec: Dict[str, Any]) -> Optional[str]:
     return _folder_from_record(rec) + fname
 
 
-def download_fim_assets(record: Dict[str, Any], dest_dir: str) -> Dict[str, Any]:
+def download_fim_assets(
+    record, dest_dir, return_period=None, download_flows: bool = True
+) -> Dict[str, Any]:
     """
     Download the .tif (if present) and any .gpkg from the record's folder to dest_dir.
+    Optionally download FLOWS CSVs (Tier_4) if download_flows=True.
     """
     os.makedirs(dest_dir, exist_ok=True)
-    out = {"tif": None, "gpkg_files": []}
+    out = {"tif": None, "gpkg_files": [], "flow_csv_files": []}
 
     # TIF
     tif_key = _tif_key_from_record(record)
@@ -438,14 +485,37 @@ def download_fim_assets(record: Dict[str, Any], dest_dir: str) -> Dict[str, Any]
             _download(BUCKET, tif_key, local)
         out["tif"] = local
 
-    # GPKGs (list folder)
+    # GPKGs
     folder = _folder_from_record(record)
-    for key in _list_prefix(folder):
+    keys = _list_prefix(folder)
+
+    for key in keys:
         if key.lower().endswith(".gpkg"):
             local = os.path.join(dest_dir, os.path.basename(key))
             if not os.path.exists(local):
                 _download(BUCKET, key, local)
             out["gpkg_files"].append(local)
+
+    # FLOWS CSVs-->optional
+    if download_flows:
+        target_tag = (
+            None if return_period is None else f"FLOWS_{int(return_period)}YR".upper()
+        )
+        for key in keys:
+            if not key.lower().endswith(".csv"):
+                continue
+            base = os.path.basename(key)
+
+            # Based on user asked Return period, only pull that one
+            if target_tag and target_tag not in base.upper():
+                continue
+            if (return_period is None) and ("FLOWS_" not in base.upper()):
+                continue
+
+            local = os.path.join(dest_dir, base)
+            if not os.path.exists(local):
+                _download(BUCKET, key, local)
+            out["flow_csv_files"].append(local)
 
     return out
 
@@ -483,6 +553,7 @@ def bmFIMFindandDownload(
     file_name: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    return_period: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     - Loads catalog from S3
@@ -503,6 +574,7 @@ def bmFIMFindandDownload(
         start_date=None,
         end_date=None,
         relaxed_for_print=False,
+        return_period=return_period,
     )
 
     # RELAXED set
@@ -514,6 +586,7 @@ def bmFIMFindandDownload(
         start_date=start_date,
         end_date=end_date,
         relaxed_for_print=True,
+        return_period=return_period,
     )
 
     ctx = _context_str(
@@ -522,6 +595,7 @@ def bmFIMFindandDownload(
         file_name=file_name,
         start_date=start_date,
         end_date=end_date,
+        return_period=return_period,
     )
     printable = format_records_for_print(relaxed_records_for_print, context=ctx)
 
@@ -534,6 +608,7 @@ def bmFIMFindandDownload(
                 and file_name is None
                 and not start_date
                 and not end_date
+                and not return_period
             )
             else "not_found"
         )
@@ -543,6 +618,7 @@ def bmFIMFindandDownload(
                 f"No match for HUC {HUC8}"
                 + (f" and '{date_input}'" if date_input else "")
                 + (f" and file '{file_name}'" if file_name else "")
+                + (f" and return period '{return_period}'" if return_period else "")
                 + ".\n"
                 + summarize_huc_availability(records, HUC8)
             ),
@@ -558,6 +634,7 @@ def bmFIMFindandDownload(
                 f"Found {len(strict_matches)} record(s) for HUC {HUC8}"
                 + (f" and '{date_input}'" if date_input else "")
                 + (f" and file '{file_name}'" if file_name else "")
+                + (f" and return period '{return_period}'" if return_period else "")
                 + ".\n"
                 + summarize_huc_availability(records, HUC8)
             ),
@@ -576,11 +653,12 @@ def bmFIMFindandDownload(
 
     dls = []
     for r in strict_matches:  # only strict matches are downloaded
-        dls.append({"record": r, "downloads": download_fim_assets(r, out_dir)})
+        dl = download_fim_assets(r, out_dir, return_period=return_period)
+        dls.append({"record": r, "downloads": dl})
 
     return {
         "status": "ok",
-        "message": f"Downloaded {len(dls)} record(s) to '{out_dir}'.",
+        "message": f"Downloaded {len(dls)} record(s) to '{out_dir}' with return period '{return_period}'.",
         "matches": dls,
         "printable": printable,
     }
