@@ -1,13 +1,45 @@
+"""
+Author: Supath Dhital (sdhital@crimson.ua.edu)
+Date Updated: March 02, 2026
+"""
+
 import os
 import sys
 import glob
 import shutil
+import rasterio
 import subprocess
 from dotenv import load_dotenv
+from rasterio.io import MemoryFile
 
 from .datadownload import setup_directories
 
 
+# Incase the final outcome has wrong CRS tag
+def _retag_5070_lzw_inplace(tif_path: str) -> None:
+    with rasterio.open(tif_path) as src:
+        profile = src.profile.copy()
+        profile.update(driver="GTiff", crs="EPSG:5070", compress="lzw", tiled=True)
+
+        with MemoryFile() as mem:
+            with mem.open(**profile) as dst:
+                for b in range(1, src.count + 1):
+                    dst.write(src.read(b), b)
+                try:
+                    cmap = src.colormap(1)
+                    if cmap:
+                        dst.write_colormap(1, cmap)
+                except Exception:
+                    pass
+            data = mem.read()
+
+    tmp = tif_path + ".tmp"
+    with open(tmp, "wb") as f:
+        f.write(data)
+    os.replace(tmp, tif_path)
+
+
+# Main module for the FIM execution
 def runfim(code_dir, output_dir, HUC_code, data_dir, depth=False):
     original_dir = os.getcwd()
     try:
@@ -79,6 +111,7 @@ def runfim(code_dir, output_dir, HUC_code, data_dir, depth=False):
                     if os.path.exists(dest_file):
                         os.remove(dest_file)
                     shutil.move(inundation_file, dest_file)
+                _retag_5070_lzw_inplace(dest_file)
 
             if depth and depth_file and os.path.exists(depth_file):
                 dest_depth = os.path.join(inundation_dir, os.path.basename(depth_file))
@@ -88,6 +121,7 @@ def runfim(code_dir, output_dir, HUC_code, data_dir, depth=False):
                     if os.path.exists(dest_depth):
                         os.remove(dest_depth)
                     shutil.move(depth_file, dest_depth)
+                _retag_5070_lzw_inplace(dest_depth)
 
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)

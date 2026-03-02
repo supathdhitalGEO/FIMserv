@@ -1,10 +1,7 @@
 import os
-import geemap
 import numpy as np
 import rasterio
 import geopandas as gpd
-from ipyleaflet import WidgetControl
-from ipywidgets import HTML
 
 from .datadownload import setup_directories
 
@@ -25,6 +22,10 @@ def InitializeGEE(projectID=None):
 def FIMVizualizer(
     raster_path, catchment_gpkg, zoom_level, huc_id, boundary_color="#800080"
 ):
+    import geemap
+    from ipyleaflet import WidgetControl
+    from ipywidgets import HTML
+
     with rasterio.open(raster_path) as src:
         data = src.read(1)
         binary_data = np.where(data > 0, 1, 0)
