@@ -1,6 +1,6 @@
 """
-Date Updated: 28 Feb, 2026
-Author: Supath Dhital (sdhital@crimson.ua.edu)
+Date Updated: 31 Mar, 2026
+Author: Supath Dhital (sdhital@ua.edu)
 """
 
 from __future__ import annotations
@@ -58,7 +58,8 @@ class FIMService:
 
     @staticmethod
     def _site_of(rec: Dict[str, Any]) -> str:
-        s = str(rec.get("site") or "").strip()
+        s = rec.get("site_id") or rec.get("site")
+        s = str(s or "").strip()
         return s if s else "site_unknown"
 
     def _find_any_owp_for_day(self, huc8: str, ymd: str) -> Optional[Path]:
@@ -201,6 +202,16 @@ class FIMService:
 
         return copied_any
 
+    # HWM Range helpers
+    def _expected_owp_path_hwm(self, huc8: str, start: str, end: str) -> Path:
+        """
+        Naming convention for HWM range-based maximum discharge maps.
+        Format: NWM_STARTDATE_ENDDATE_maximum_HUC_inundation.tif
+        """
+        s, e = start.replace("-", ""), end.replace("-", "")
+        name = f"NWM_{s}_{e}_maximum_{huc8}_inundation.tif"
+        return self.owp_root / f"flood_{huc8}" / f"{huc8}_inundation" / name
+
     # Query
     def query(
         self,
@@ -221,6 +232,8 @@ class FIMService:
             huc8=huc8,
             date_input=date_input,
             file_name=file_name,
+            start_date=start_date,
+            end_date=end_date,
             return_period=return_period,
             relaxed_for_print=False,
         )
@@ -259,19 +272,7 @@ class FIMService:
             base_msg += f" and file '{file_name}'"
         if start_date or end_date:
             base_msg += f" in range [{start_date or '-∞'} , {end_date or '∞'}]"
-        if not strict_matches:
-            base_msg = (
-                "No match for HUC "
-                + huc8
-                + (f" and '{date_input}'" if date_input else "")
-                + (f" and file '{file_name}'" if file_name else "")
-                + (
-                    f" in range [{start_date or '-∞'} , {end_date or '∞'}]"
-                    if (start_date or end_date)
-                    else ""
-                )
-            )
-
+        
         printable = format_records_for_print(relaxed_matches)
         return {
             "status": status,
@@ -290,6 +291,8 @@ class FIMService:
         out_dir: Optional[str] = None,
         file_name: Optional[str] = None,
         return_period: Optional[int] = None,
+        start_date: Optional[str] = None,  
+        end_date: Optional[str] = None,  
     ) -> Dict[str, Any]:
         catalog = load_catalog_core()
         records = catalog.get("records", [])
@@ -298,8 +301,8 @@ class FIMService:
             huc8=str(huc8).strip(),
             date_input=date_input,
             file_name=file_name,
-            start_date=None,
-            end_date=None,
+            start_date=start_date,
+            end_date=end_date,
             return_period=return_period,
             relaxed_for_print=False,
         )
@@ -343,7 +346,6 @@ class FIMService:
                         "matches": [],
                     }
 
-                # IMPORTANT: if user provided date_input, force folder label from user date
                 site = self._site_of(rec)
                 folder = inputs_root / f"HUC{huc8}_{site}"
                 folder.mkdir(parents=True, exist_ok=True)
@@ -353,26 +355,25 @@ class FIMService:
                 )
 
                 owp_path = None
-                if ensure_owp and date_input:
+                if ensure_owp:
+                    # Check if the assumed file record has range metadata
+                    rec_start = rec.get("start_date_ymd")
+                    rec_end = rec.get("end_date_ymd")
+
                     owp_path = self._ensure_owp_to(
-                        huc8,
-                        date_input,
-                        str(folder),
+                        huc8=huc8,
+                        user_dt=date_input,
+                        dest_dir=str(folder),
                         generate_if_missing=generate_owp_if_missing,
                         return_period=return_period,
+                        start_date=rec_start or start_date,
+                        end_date=rec_end or end_date
                     )
 
                 msg = (
                     f"Used user-specified file '{file_name}' as benchmark reference. "
                     f"Downloaded into '{folder}'."
                 )
-                if ensure_owp and date_input:
-                    msg += (
-                        " OWP HAND FIM ensured (copied/generated)."
-                        if owp_path
-                        else " OWP HAND FIM not found and not generated."
-                    )
-
                 return {
                     "status": "assumed",
                     "message": msg,
@@ -388,15 +389,12 @@ class FIMService:
                     "matches": [rec],
                 }
 
-            # No file_name provided --> truly no match
             msg = f"No strict benchmark match for HUC {huc8}" + (
                 f" and '{date_input}'" if date_input else ""
             )
             return {"status": "not_found", "message": msg, "folders": [], "matches": []}
 
-        # Group records by their event label:
-        #   - if date_input is given, all records share the same user-supplied label
-        #   - otherwise, derive each record's label from its own timestamp
+        # Group records by their event label
         label_map: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
         for rec in strict_matches:
             label = (
@@ -411,7 +409,6 @@ class FIMService:
         ran_return_period = False
 
         for label, recs in sorted(label_map.items()):
-            # Build per-site download map and create output folders
             dl_by_site: Dict[str, List[Dict[str, Any]]] = {}
             for rec in recs:
                 site = self._site_of(rec)
@@ -425,18 +422,13 @@ class FIMService:
                 if dl.get("tif") or dl.get("gpkg_files"):
                     total_downloaded += 1
 
-            # Derive a real datetime string for OWP generation from this label
-            try:
-                if len(label) == 8:  # YYYYMMDD
-                    user_dt: Optional[str] = f"{label[:4]}-{label[4:6]}-{label[6:]}"
-                elif len(label) >= 10:  # YYYYMMDDHHMMSS or similar
-                    user_dt = f"{label[:4]}-{label[4:6]}-{label[6:8]}T{label[8:10]}"
-                else:
-                    user_dt = None
-            except Exception:
-                user_dt = None
+            # Identify if this event is an HWM Range based on the first record
+            current_rec = recs[0]
+            rec_start = current_rec.get("start_date_ymd")
+            rec_end = current_rec.get("end_date_ymd")
 
-            # Return-period run mode (Tier_4 has no timestamps); run only once across all labels
+            user_dt = self._user_dt_from_label(label)
+
             if ensure_owp and (return_period is not None) and (not ran_return_period):
                 dest_dirs = [
                     str(inputs_root / f"HUC{huc8}_{site}") for site in dl_by_site
@@ -444,56 +436,51 @@ class FIMService:
                 self._generate_owp_return_period(huc8, int(return_period), dest_dirs)
                 ran_return_period = True
 
-            # Ensure/generate OWP HAND FIM for that event time and copy to all matching site folders
             owp_src_copied_any = False
-            if ensure_owp and user_dt:
+            if ensure_owp:
                 for site in dl_by_site:
                     folder = inputs_root / f"HUC{huc8}_{site}"
                     owp_path = self._ensure_owp_to(
-                        huc8,
-                        user_dt,
-                        str(folder),
+                        huc8=huc8,
+                        user_dt=user_dt,
+                        dest_dir=str(folder),
                         generate_if_missing=generate_owp_if_missing,
                         return_period=return_period,
+                        start_date=rec_start or start_date,
+                        end_date=rec_end or end_date
                     )
-                    owp_src_copied_any = owp_src_copied_any or bool(owp_path)
+                    if owp_path:
+                        owp_src_copied_any = True
 
-            # Record outputs for this label
             for site, dl_records in dl_by_site.items():
                 folder = inputs_root / f"HUC{huc8}_{site}"
+                
+                # Dynamic pathing for the return dictionary
+                if rec_start and rec_end:
+                    expected_name = self._expected_owp_path_hwm(huc8, rec_start, rec_end).name
+                    final_owp_path = str(folder / expected_name) if owp_src_copied_any else None
+                else:
+                    final_owp_path = str(folder / f"NWM_{label}_{huc8}_inundation.tif") if (ensure_owp and owp_src_copied_any) else None
+
                 folders_out.append(
                     {
                         "label": site if date_input else f"{label}:{site}",
                         "folder": str(folder),
                         "records": [d["record"] for d in dl_records],
                         "downloads": dl_records,
-                        "owp_path": (
-                            str(folder / f"NWM_{label}_{huc8}_inundation.tif")
-                            if (ensure_owp and owp_src_copied_any)
-                            else None
-                        ),
+                        "owp_path": final_owp_path,
                     }
                 )
 
-        msg_bits = [
-            f"Downloaded {total_downloaded} benchmark item(s) into '{inputs_root}'."
-        ]
+        # Build message
+        msg_bits = [f"Downloaded {total_downloaded} benchmark item(s) into '{inputs_root}'."]
         if ensure_owp:
             if return_period is not None:
-                msg_bits.append(
-                    f"OWP HAND FIM generated for {return_period} year return period."
-                )
-            elif date_input:
-                any_owp = any(f.get("owp_path") for f in folders_out)
-                msg_bits.append(
-                    f"OWP HAND FIM ensured for '{date_input}' (copied/generated to each site folder)."
-                    if any_owp
-                    else f"OWP HAND FIM not found for '{date_input}' and was not generated."
-                )
+                msg_bits.append(f"OWP HAND FIM generated for {return_period} year return period.")
+            elif rec_start and rec_end:
+                msg_bits.append(f"OWP HAND FIM generated using MAXIMUM discharge for range {rec_start} to {rec_end}.")
             else:
-                msg_bits.append(
-                    "OWP HAND FIMs ensured per event (based on benchmark timestamps)."
-                )
+                msg_bits.append("OWP HAND FIMs ensured per event.")
 
         return {
             "status": "ok",
@@ -520,23 +507,53 @@ class FIMService:
         hh = _to_hour_or_none(user_dt)
         return f"{day:%Y%m%d}" if hh is None else f"{day:%Y%m%d}{hh:02d}0000"
 
+    def _user_dt_from_label(self, label: str) -> Optional[str]:
+        """Convert a YYYYMMDD string back into a dash-separated user string."""
+        try:
+            if len(label) == 8:
+                return f"{label[:4]}-{label[4:6]}-{label[6:]}"
+            elif len(label) >= 10:
+                return f"{label[:4]}-{label[4:6]}-{label[6:8]}T{label[8:10]}"
+        except:
+            pass
+        return None
+
     def _ensure_owp_to(
         self,
         huc8: str,
-        user_dt: str,
+        user_dt: Optional[str],
         dest_dir: str,
         generate_if_missing: bool,
         return_period: Optional[int] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
     ) -> Optional[str]:
         """
         Idempotent ensure:
-        - If hour provided: look for the exact file.
-        - If only day provided: accept any-hour tif for that day.
-        - Only run generator when nothing exists; then copy to dest_dir.
+        - Checks for HWM Range maps first.
+        - Checks for specific timestamps or daily maps.
         """
+        # HWM Range Map
+        if start_date and end_date:
+            existing = self._expected_owp_path_hwm(huc8, start_date, end_date)
+            if existing.exists():
+                return self._copy_to_dest(existing, dest_dir)
+            
+            if generate_if_missing:
+                produced = self._generate_owp(
+                    huc8=huc8, user_dt=None, return_period=return_period, 
+                    start_date=start_date, end_date=end_date
+                )
+                if produced and produced.exists():
+                    return self._copy_to_dest(produced, dest_dir)
+            return None
+
+        # Standard Day/Hour Map
+        if not user_dt:
+            return None
+
         ymd, timestr = self._ymd_timestr_from_user(user_dt)
 
-        # Check existing output(s)
         if timestr is None:
             existing = self._find_any_owp_for_day(huc8, ymd)
         else:
@@ -546,16 +563,10 @@ class FIMService:
         if existing and existing.exists():
             return self._copy_to_dest(existing, dest_dir)
 
-        # Generate if allowed
         if generate_if_missing:
             produced = self._generate_owp(huc8, user_dt, return_period=return_period)
             if produced and produced.exists():
                 return self._copy_to_dest(produced, dest_dir)
-            # day-only fallback: after run, accept any-hour tif for the day
-            if timestr is None:
-                any_after = self._find_any_owp_for_day(huc8, ymd)
-                if any_after and any_after.exists():
-                    return self._copy_to_dest(any_after, dest_dir)
 
         return None
 
@@ -583,56 +594,64 @@ class FIMService:
         return str(dst)
 
     def _generate_owp(
-        self, huc8: str, user_dt: str, return_period: Optional[int] = None
+        self, 
+        huc8: str, 
+        user_dt: Optional[str], 
+        return_period: Optional[int] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
     ) -> Optional[Path]:
         """
-        Idempotent generation:
-        - Skip running if the target file (or any-hour for day-only) already exists.
-        - After running, return the produced path (exact hour if known; else first match for the day).
+        Main generation driver.
+        - Supports HWM ranges with Maximum Discharge sort.
+        - Supports return periods.
+        - Supports standard event points.
         """
         self._ensure_roots()
 
-        ymd, timestr = self._ymd_timestr_from_user(user_dt)
-
-        # Skip if already there
-        if timestr is not None:
+        # Check existing first to avoid double processing
+        if start_date and end_date:
+            expected = self._expected_owp_path_hwm(huc8, start_date, end_date)
+            if expected.exists(): return expected
+        elif user_dt:
+            ymd, timestr = self._ymd_timestr_from_user(user_dt)
             expected = self._expected_owp_path(huc8, ymd, timestr)
-            if expected.exists():
-                return expected
-        else:
-            any_day = self._find_any_owp_for_day(huc8, ymd)
-            if any_day and any_day.exists():
-                return any_day
+            if expected.exists(): return expected
 
-        print(f"Generating for HUC {huc8} and '{user_dt}'...")
+        print(f"Generating OWP HAND FIM for HUC {huc8}...")
         DownloadHUC8(huc8, version="4.8")
 
-        day = _to_date(user_dt)
-        hh = _to_hour_or_none(user_dt)
-        stamp = f"{day:%Y-%m-%d}" if hh is None else f"{day:%Y-%m-%d} {hh:02d}:00:00"
-
-        if return_period is None:
-            getNWMretrospectivedata(huc_event_dict={str(huc8): [stamp]})
-        else:
-            # For return period mode we do not download event-based NWM retrospective discharge
-            rp = int(return_period)
-            _ = self._download_return_period_flows_csv(huc8, rp)
-            print(
-                f"Return period {return_period} provided from AWS S3 --> skipping event based NWM retrospective download."
+        # HWM Range --> Maximum Discharge over the date range
+        if start_date and end_date:
+            print(f"Triggering NWM retrospective for range {start_date} to {end_date} (Sort: Maximum)")
+            getNWMretrospectivedata(
+                huc=str(huc8), 
+                start_date=start_date, 
+                end_date=end_date, 
+                discharge_sortby="maximum"
             )
+            runOWPHANDFIM(huc8)
+            return self._expected_owp_path_hwm(huc8, start_date, end_date)
 
-        runOWPHANDFIM(huc8)
+        # Return Period (BLE)--> get the flows from aws
+        if return_period is not None:
+            self._download_return_period_flows_csv(huc8, int(return_period))
+            runOWPHANDFIM(huc8)
+            return self._find_any_owp_for_return_period(huc8, int(return_period))
 
-        # After run, re-check
-        if timestr is not None:
-            expected = self._expected_owp_path(huc8, ymd, timestr)
-            if expected.exists():
-                return expected
-        any_day = self._find_any_owp_for_day(huc8, ymd)
-        return any_day if (any_day and any_day.exists()) else None
-
-
-# FIM lookup convenience function
+        # Standard specific event --> using the date input
+        if user_dt:
+            day = _to_date(user_dt)
+            hh = _to_hour_or_none(user_dt)
+            stamp = f"{day:%Y-%m-%d}" if hh is None else f"{day:%Y-%m-%d} {hh:02d}:00:00"
+            getNWMretrospectivedata(huc_event_dict={str(huc8): [stamp]})
+            runOWPHANDFIM(huc8)
+            ymd, timestr = self._ymd_timestr_from_user(user_dt)
+            return self._expected_owp_path(huc8, ymd, timestr)
+        
+        return None
+    
+#Main wrapper
 def fim_lookup(
     HUCID: str,
     date_input: Optional[str] = None,
@@ -644,18 +663,14 @@ def fim_lookup(
     out_dir: Optional[str] = None,
 ) -> str:
     """
-    Behavior:
-      - If file_name is provided: ALWAYS download the benchmark assets (tif + gpkg) into out_dir (or CWD),
-        regardless of run_handfim.
-      - If run_handfim=True: additionally ensure/generate OWP HAND FIM (copied into the same folder(s)).
-      - If file_name is not provided:
-          * run_handfim=False -> listing mode (query/pretty print)
-          * run_handfim=True  -> process mode (download strict matches + ensure OWP)
+    Simplified wrapper to interact with FIMService.
+    - If run_handfim is True: It triggers 'process' (Downloads + OWP Generation).
+    - If run_handfim is False: It triggers 'query' (Metadata listing).
     """
     svc = FIMService()
 
-    # If filename is provided, always download benchmark assets.
-    if file_name:
+    # Filename provided OR run_handfim is True
+    if file_name or run_handfim:
         rep = svc.process(
             huc8=HUCID,
             date_input=date_input,
@@ -664,47 +679,31 @@ def fim_lookup(
             out_dir=out_dir,
             file_name=file_name,
             return_period=return_period,
+            start_date=start_date, 
+            end_date=end_date 
         )
         return rep.get("message", "")
 
-    # If No filename provided: preserve original behavior
-    if not run_handfim:
-        q = svc.query(
-            HUCID=HUCID,
-            date_input=date_input,
-            file_name=None,
-            start_date=start_date,
-            end_date=end_date,
-            return_period=return_period,
-        )
-        txt = q.get("printable") or ""
-        if not txt.strip():
-            return (
-                "No benchmark FIMs were matched with the information you provided.\n"
-                f"(HUC={HUCID}"
-                f"{', date='+date_input if date_input else ''}"
-                f"{', range=['+str(start_date)+' , '+str(end_date)+']' if (start_date or end_date) else ''})"
-            )
-
-        header = "Following are the available benchmark data"
-        filt = []
-        if HUCID:
-            filt.append(f"HUC {HUCID}")
-        if date_input:
-            filt.append(f"date '{date_input}'")
-        if start_date or end_date:
-            filt.append(f"range [{start_date or '-∞'} , {end_date or '∞'}]")
-        prefix = header + (" for " + ", ".join(filt) + ":\n" if filt else ":\n")
-        return prefix + txt
-
-    #  If run_handfim=True, no filename: process strict matches with date and ensure OWP
-    rep = svc.process(
-        huc8=HUCID,
+    # Just looking for what is available --> QUERY Mode
+    q = svc.query(
+        HUCID=HUCID,
         date_input=date_input,
-        ensure_owp=True,
-        generate_owp_if_missing=True,
-        out_dir=out_dir,
         file_name=None,
+        start_date=start_date,
+        end_date=end_date,
         return_period=return_period,
     )
-    return rep.get("message", "")
+    
+    txt = q.get("printable") or ""
+    if not txt.strip():
+        return (
+            f"No benchmark FIMs matched for HUC {HUCID}. "
+            f"Range: [{start_date or '-∞'} , {end_date or '∞'}]"
+        )
+
+    header = "Following are the available benchmark data"
+    filt = [f"HUC {HUCID}"]
+    if date_input: filt.append(f"date '{date_input}'")
+    if start_date or end_date: filt.append(f"range [{start_date or '-∞'} , {end_date or '∞'}]")
+    
+    return f"{header} for {', '.join(filt)}:\n{txt}"

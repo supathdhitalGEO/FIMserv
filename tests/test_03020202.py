@@ -32,7 +32,8 @@ def test_runfim():
 
     # for fixed date or day data
     value_times = ["2016-01-02"]
-    fm.getNWMretrospectivedata(huc, start_date, end_date, value_times)
+    # fm.getNWMretrospectivedata(huc, value_times)
+    fm.getNWMretrospectivedata(huc, start_date, end_date, discharge_sortby="maximum")
 
     # # #Get USGS data
     # fm.getUSGSsitedata(huc, start_date, end_date)
@@ -55,4 +56,4 @@ def test_runfim():
     # )
 
     # Run the FIM model
-    fm.runOWPHANDFIM(huc, depth=True)
+    # fm.runOWPHANDFIM(huc, depth=True)

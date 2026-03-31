@@ -5,13 +5,13 @@ import pandas as pd
 # Look for the benchmark FIM data for the HUC8 and event date
 def test_bm_fimlookup():
     out = fm.fim_lookup(
-        HUCID="11110205",
-        # date_input="2017-05-12",  # If user is more specific then they can pass date (with hour if known) along with HUC8
-        # start_date="2017-06-20", #If user is not sure of the exact date then they can pass a range of dates
-        # end_date="2024-06-25",
-        return_period=100,  # For Tier_4; BLE based benchmark, user can pass return period to genrate OWP HAND FIM to evaluate, we have 100 and 500 yr flows saves in AWS
+        HUCID="05050005",
+        # date_input="2024-06-24",  # If user is more specific then they can pass date (with hour if known) along with HUC8
+        start_date="2016-06-23", #If user is not sure of the exact date then they can pass a range of dates
+        end_date="2016-06-25",
+        # return_period=500,  # For Tier_4; BLE based benchmark, user can pass return period to genrate OWP HAND FIM to evaluate, we have 100 and 500 yr flows saves in AWS
         run_handfim=True,  # It will look for the owp hand fim for the mentioned HUC8 and date, if not found it will download and generate the owp hand fim; default is False
-        # file_name= "BLE_10_0m_500_921957W351837N_BM.tif", #If user pass the specific filename, it will download that and assume that this is the right benchmark, else based on exact match of date it will look for the benchmark
+        file_name= "HWM_10_0m_20160623_20160625_804548W375806N_BM.tif", #If user pass the specific filename, it will download that and assume that this is the right benchmark, else based on exact match of date it will look for the benchmark
         out_dir="../test_FIMeval",  # Required if user wants to download the benchmark FIM data
     )
     print(out)

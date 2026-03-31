@@ -1,5 +1,11 @@
-"""This utility function contains how to retrieve all the necessary metadata from the s3 bucket during evaluation
-for HAND FIM model outputs along with other supporting functions"""
+"""
+Author: Supath Dhital (sdhital@ua.edu)
+Updated: March 2026
+
+This utility function contains how to retrieve all the necessary metadata from the s3 bucket during evaluation
+for HAND FIM model outputs along with other supporting functions
+
+"""
 
 from __future__ import annotations
 import os, re, json, datetime as dt
@@ -73,18 +79,30 @@ def _to_hour_or_none(s: str) -> Optional[int]:
 
 
 def _record_day(rec: Dict[str, Any]) -> Optional[dt.date]:
-    ymd = rec.get("date_ymd")
-    if isinstance(ymd, str):
+    # standard date_ymd, event ts, start and end date for high water marks
+    if rec.get("date_ymd"):
         try:
-            return dt.date.fromisoformat(ymd)
-        except Exception:
+            return dt.date.fromisoformat(rec["date_ymd"])
+        except:
             pass
+    if rec.get("event_ts") and len(str(rec["event_ts"])) >= 8:
+        try:
+            return dt.datetime.strptime(str(rec["event_ts"])[:8], "%Y%m%d").date()
+        except:
+            pass
+    if rec.get("start_date_ymd"):
+        try:
+            return dt.date.fromisoformat(rec["start_date_ymd"])
+        except:
+            pass
+    # Fallback
     raw = rec.get("date_of_flood")
     if isinstance(raw, str) and len(raw) >= 8:
         try:
             return dt.datetime.strptime(raw[:8], "%Y%m%d").date()
-        except Exception:
-            return None
+        except:
+            pass
+
     return None
 
 
@@ -100,12 +118,20 @@ def _record_hour_or_none(rec: Dict[str, Any]) -> Optional[int]:
 
 # Printing helpers
 def _pretty_date_for_print(rec: Dict[str, Any]) -> str:
+    start = rec.get("start_date_ymd")
+    end = rec.get("end_date_ymd")
+    if start and end:
+        return f"{start} to {end}"
     raw = rec.get("date_of_flood")
     if isinstance(raw, str) and "T" in raw and len(raw) >= 11:
         return f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}T{raw.split('T',1)[1][:2]}"
     ymd = rec.get("date_ymd")
     if isinstance(ymd, str) and _YMD_RE.match(ymd):
         return ymd
+    ts = rec.get("event_ts")
+    if ts and len(str(ts)) >= 8:
+        s_ts = str(ts)
+        return f"{s_ts[:4]}-{s_ts[4:6]}-{s_ts[6:8]}"
     if isinstance(raw, str) and len(raw) >= 8:
         return f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
     return "unknown"
@@ -330,83 +356,89 @@ def find_fims(
     huc8 = str(huc8).strip()
     recs = [r for r in records if huc8 in set(_record_huc8_list(r))]
 
-    # If return period is provided, filters is applied based on the return period.
+    # Filter by Return Period (Synthetic/Tier 4)
     if return_period is not None:
         trp = int(return_period)
+        recs = [
+            r for r in recs if r.get("return_period") and int(r["return_period"]) == trp
+        ]
 
-        def _rp_match(r):
-            v = r.get("return_period", None)
-            try:
-                return int(v) == trp
-            except Exception:
-                return False
-
-        recs = [r for r in recs if _rp_match(r)]
-
+    # Filter by Filename
     if file_name:
         fname = file_name.strip()
         recs = [r for r in recs if str(r.get("file_name", "")).strip() == fname]
 
+    # STRICT SEARCH
+    # Used for processing and specific downloads.
     if not relaxed_for_print:
         if date_input is None:
             return recs
+
         target_day = _to_date(date_input)
         target_hour = _to_hour_or_none(date_input)
-        out: List[Dict[str, Any]] = []
-        for r in recs:
-            r_day = _record_day(r)
-            if r_day != target_day:
-                continue
-            r_hour = _record_hour_or_none(r)
-            if target_hour is None:
-                if r_hour is None:
-                    out.append(r)
-            else:
-                if r_hour is not None and r_hour == target_hour:
-                    out.append(r)
-        return out
+        out = []
 
-    # relaxed_for_print=True
-    if start_date or end_date:
-        d0 = _to_date(start_date) if start_date else None
-        d1 = _to_date(end_date) if end_date else None
-        out: List[Dict[str, Any]] = []
         for r in recs:
-            r_day = _record_day(r)
-            if not r_day:
-                continue
-            if d0 and r_day < d0:
-                continue
-            if d1 and r_day > d1:
-                continue
-            out.append(r)
-        out.sort(
-            key=lambda x: (str(x.get("date_of_flood", "")), str(x.get("file_name", "")))
-        )
-        return out
+            # Check for HWM Range Overlap first
+            r_start = r.get("start_date_ymd")
+            r_end = r.get("end_date_ymd")
 
-    if date_input and _to_hour_or_none(date_input) is None:
-        target_day = _to_date(date_input)
-        out: List[Dict[str, Any]] = []
-        for r in recs:
+            if r_start and r_end:
+                # If target_day falls within the HWM range, it's a match
+                if (
+                    dt.date.fromisoformat(r_start)
+                    <= target_day
+                    <= dt.date.fromisoformat(r_end)
+                ):
+                    out.append(r)
+                continue
+
+            # Check for Exact Real-Event Match
             r_day = _record_day(r)
             if r_day == target_day:
-                out.append(r)
-        out.sort(
-            key=lambda x: (str(x.get("date_of_flood", "")), str(x.get("file_name", "")))
-        )
+                # If searching by hour, verify hour match too
+                if target_hour is not None:
+                    r_hour = _record_hour_or_none(r)
+                    if r_hour == target_hour:
+                        out.append(r)
+                else:
+                    # Searching by day only, and record is day-only
+                    if _record_hour_or_none(r) is None:
+                        out.append(r)
         return out
 
-    return find_fims(
-        records=recs,
-        huc8=huc8,
-        date_input=date_input,
-        file_name=None,
-        start_date=None,
-        end_date=None,
-        return_period=return_period,
-        relaxed_for_print=False,
-    )
+    # RELAXED SEARCH
+    # Gives all the available
+    else:
+        # Determine the search window
+        d0 = _to_date(start_date) if start_date else None
+        d1 = _to_date(end_date) if end_date else None
+
+        if not d0 and not d1 and date_input:
+            d0 = d1 = _to_date(date_input)
+
+        if not d0 and not d1:
+            return recs
+
+        out = []
+        for r in recs:
+            r_day = _record_day(r)
+            r_start_str = r.get("start_date_ymd")
+            r_end_str = r.get("end_date_ymd")
+
+            # Check Intersection with HWM Range
+            if r_start_str and r_end_str:
+                rs = dt.date.fromisoformat(r_start_str)
+                re = dt.date.fromisoformat(r_end_str)
+                if (not d1 or rs <= d1) and (not d0 or re >= d0):
+                    out.append(r)
+
+            elif r_day:
+                if (not d0 or r_day >= d0) and (not d1 or r_day <= d1):
+                    out.append(r)
+
+        out.sort(key=lambda x: str(_record_day(x) or ""))
+        return out
 
 
 def summarize_huc_availability(records: List[Dict[str, Any]], huc8: str) -> str:
@@ -415,13 +447,18 @@ def summarize_huc_availability(records: List[Dict[str, Any]], huc8: str) -> str:
     if not recs:
         return f"No benchmark FIMs on HUC {huc8}."
 
-    with_raw = []
+    # Find all records that have some form of real-world date/range
+    real_benchmarks = []
     for r in recs:
-        raw = r.get("date_of_flood")
-        if isinstance(raw, str) and (len(raw) == 8 or ("T" in raw and len(raw) >= 11)):
-            with_raw.append(r)
+        if (
+            r.get("date_of_flood")
+            or r.get("date_ymd")
+            or r.get("start_date_ymd")
+            or r.get("event_ts")
+        ):
+            real_benchmarks.append(r)
 
-    if not with_raw:
+    if not real_benchmarks:
         rps = sorted(
             {str(r.get("return_period")) for r in recs if r.get("return_period")}
         )
@@ -432,21 +469,16 @@ def summarize_huc_availability(records: List[Dict[str, Any]], huc8: str) -> str:
             )
         return f"No real flood-based benchmarks on HUC {huc8}."
 
-    day_set, hour_set = set(), set()
-    for r in with_raw:
-        d = _record_day(r)
-        if d:
-            day_set.add(d.isoformat())
-            h = _record_hour_or_none(r)
-            if h is not None:
-                hour_set.add(f"{d:%Y-%m-%d}T{h:02d}")
+    # Collect unique dates/ranges to show the user
+    avail_info = set()
+    for r in real_benchmarks:
+        date_label = _pretty_date_for_print(r)
+        if date_label != "unknown":
+            avail_info.add(date_label)
 
-    parts = []
-    if day_set:
-        parts.append("days: " + ", ".join(sorted(day_set)))
-    if hour_set:
-        parts.append("hourly: " + ", ".join(sorted(hour_set)))
-    return f"Available benchmark dates on HUC {huc8}: " + " | ".join(parts)
+    return f"Available benchmark dates/ranges on HUC {huc8}: " + " | ".join(
+        sorted(avail_info)
+    )
 
 
 # Get the files from s3 bucket
