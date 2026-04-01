@@ -174,6 +174,13 @@ def _context_str(
     return ", ".join(parts) if parts else "your filters"
 
 
+def _normalize_tier_for_comparison(s: str) -> str:
+    """Helper to make tier filtering case/format insensitive."""
+    if not s:
+        return ""
+    return str(s).lower().replace(" ", "").replace("-", "").replace("_", "")
+
+
 def format_records_for_print(
     records: List[Dict[str, Any]], context: Optional[str] = None
 ) -> str:
@@ -186,33 +193,38 @@ def format_records_for_print(
         if context
         else ""
     )
-
     blocks: List[str] = []
+
     for r in records:
         tier = _tier_label(r)
         date_str = _pretty_date_for_print(r)
         res = r.get("resolution_m")
         res_txt = f"{res}m" if res is not None else "NA"
         fname = r.get("file_name") or "NA"
+        huc_list = _record_huc8_list(r)
+        area_map = r.get("huc_area_results", {})
 
-        rp = r.get("return_period")
-        rp_txt = f"{rp}yr" if rp is not None else "NA"
+        huc_display = []
+        for h in huc_list:
+            if h in area_map:
+                huc_display.append(f"{h} (Intersected area: {area_map[h]:.2f}%)")
+            else:
+                huc_display.append(h)
 
-        # Decide which one to print:
-        # - If date is known (not "unknown") => event-based benchmark => print date only
-        # - Else if return_period exists => RP benchmark => print RP only
+        huc_str = ", ".join(huc_display) if huc_display else "NA"
+
         lines = [
             f"Data Tier: {tier}",
             f"Spatial Resolution: {res_txt}",
+            f"Intersecting HUC8: {huc_str}",
             f"Raster Filename in DB: {fname}",
         ]
 
         if date_str != "unknown":
             lines.insert(1, f"Benchmark FIM date: {date_str}")
-        elif rp is not None:
-            lines.insert(1, f"Return Period: {rp_txt}")
+        elif r.get("return_period") is not None:
+            lines.insert(1, f"Return Period: {r.get('return_period')}yr")
         else:
-            # fallback if neither is available
             lines.insert(1, "Benchmark FIM date: unknown")
 
         blocks.append("\n".join(lines))
@@ -334,6 +346,7 @@ def find_fims(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     return_period: Optional[int] = None,
+    tier: Optional[str] = None,
     relaxed_for_print: bool = False,
 ) -> List[Dict[str, Any]]:
     """
@@ -355,6 +368,15 @@ def find_fims(
     """
     huc8 = str(huc8).strip()
     recs = [r for r in records if huc8 in set(_record_huc8_list(r))]
+
+    # Applying tier if passed
+    if tier:
+        target_t = _normalize_tier_for_comparison(tier)
+        recs = [
+            r
+            for r in recs
+            if _normalize_tier_for_comparison(_tier_label(r)) == target_t
+        ]
 
     # Filter by Return Period (Synthetic/Tier 4)
     if return_period is not None:
@@ -586,6 +608,7 @@ def bmFIMFindandDownload(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     return_period: Optional[int] = None,
+    tier: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     - Loads catalog from S3
@@ -607,6 +630,7 @@ def bmFIMFindandDownload(
         end_date=None,
         relaxed_for_print=False,
         return_period=return_period,
+        tier=tier,
     )
 
     # RELAXED set
@@ -619,6 +643,7 @@ def bmFIMFindandDownload(
         end_date=end_date,
         relaxed_for_print=True,
         return_period=return_period,
+        tier=tier,
     )
 
     ctx = _context_str(

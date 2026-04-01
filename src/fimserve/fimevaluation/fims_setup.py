@@ -7,6 +7,9 @@ from __future__ import annotations
 from typing import Optional, Dict, Any, List, Tuple, DefaultDict
 from pathlib import Path
 import os
+import rasterio
+from rasterio.merge import merge
+import tempfile
 import shutil
 from collections import defaultdict
 
@@ -29,6 +32,7 @@ from .utils import (
 
 from ..datadownload import DownloadHUC8, setup_directories
 from ..streamflowdata.nwmretrospective import getNWMretrospectivedata
+from ..intersectedHUC import HUC8RESTFinder
 from ..runFIM import runOWPHANDFIM
 
 
@@ -221,6 +225,9 @@ class FIMService:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         return_period: Optional[int] = None,
+        tier: Optional[str] = None,
+        huc_intersectedarea: bool = False,
+        huc_thresholdarea: float = 0.0,
     ) -> Dict[str, Any]:
         catalog = load_catalog_core()
         records = catalog.get("records", [])
@@ -235,6 +242,7 @@ class FIMService:
             start_date=start_date,
             end_date=end_date,
             return_period=return_period,
+            tier=tier,
             relaxed_for_print=False,
         )
 
@@ -247,8 +255,25 @@ class FIMService:
             start_date=start_date,
             end_date=end_date,
             return_period=return_period,
+            tier=tier,
             relaxed_for_print=True,
         )
+
+        if huc_intersectedarea and relaxed_matches:
+            finder = HUC8RESTFinder(debug=False)
+            for rec in relaxed_matches:
+                gpkg_url = rec.get("gpkg_url")
+                if not gpkg_url:
+                    continue
+
+                # Derive S3 Key from URL
+                s3_key = gpkg_url.split(".amazonaws.com/")[1]
+
+                with tempfile.NamedTemporaryFile(suffix=".gpkg") as tmp:
+                    # Download only the small AOI polygon
+                    _download(BUCKET, s3_key, tmp.name)
+                    # Run REST-based mapping and attach to record
+                    rec["huc_area_results"] = finder.get_huc_area_mapping(tmp.name)
 
         status = (
             "ok"
@@ -272,7 +297,7 @@ class FIMService:
             base_msg += f" and file '{file_name}'"
         if start_date or end_date:
             base_msg += f" in range [{start_date or '-∞'} , {end_date or '∞'}]"
-        
+
         printable = format_records_for_print(relaxed_matches)
         return {
             "status": status,
@@ -281,213 +306,195 @@ class FIMService:
             "printable": printable,
         }
 
-    # Trigger the process to download the benchmark FIM data and ensure/generate the OWP HAND FIM
     def process(
         self,
-        huc8: str,
+        huc8: Optional[str] = None,
         date_input: Optional[str] = None,
         ensure_owp: bool = True,
         generate_owp_if_missing: bool = True,
         out_dir: Optional[str] = None,
         file_name: Optional[str] = None,
         return_period: Optional[int] = None,
-        start_date: Optional[str] = None,  
-        end_date: Optional[str] = None,  
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        tier: Optional[str] = None,
+        huc_thresholdarea: float = 0.0,
+        eval_individual_huc: bool = False,
     ) -> Dict[str, Any]:
+        # Initialize roots and load benchmark catalog data
+        self._ensure_roots()
         catalog = load_catalog_core()
         records = catalog.get("records", [])
-        strict_matches = find_fims(
-            records,
-            huc8=str(huc8).strip(),
-            date_input=date_input,
-            file_name=file_name,
-            start_date=start_date,
-            end_date=end_date,
-            return_period=return_period,
-            relaxed_for_print=False,
-        )
-        if out_dir:
-            inputs_root = Path(out_dir)
-        else:
-            inputs_root = Path(os.getcwd()) / "FIMevaluation_inputs"
-            inputs_root.mkdir(parents=True, exist_ok=True)
 
-        self._ensure_roots()
+        target_recs = []
+        huc8_list = []
 
-        # If strict match missing but filename given --> fallback to filename-based lookup
-        if not strict_matches:
-            if file_name:
-                fname = file_name.strip()
-                cand_same_huc = [
+        # Resolve target record and associated HUC list based on filename or HUC ID
+        if file_name:
+            fname = file_name.strip()
+            found = [r for r in records if str(r.get("file_name", "")).strip() == fname]
+
+            # Apply tier filtering to narrow down the specific benchmark file
+            if tier:
+                from .utils import _normalize_tier_for_comparison
+
+                target_t = _normalize_tier_for_comparison(tier)
+                found = [
                     r
-                    for r in records
-                    if str(r.get("file_name", "")).strip() == fname
-                    and str(huc8).strip() in set(_record_huc8_list(r))
+                    for r in found
+                    if _normalize_tier_for_comparison(r.get("tier") or r.get("quality"))
+                    == target_t
                 ]
-                cand_any_huc = [
-                    r for r in records if str(r.get("file_name", "")).strip() == fname
-                ]
-                rec = (
-                    cand_same_huc[0]
-                    if cand_same_huc
-                    else (cand_any_huc[0] if cand_any_huc else None)
-                )
 
-                if rec is None:
-                    msg = (
-                        f"No strict benchmark match for HUC {huc8}"
-                        + (f" and '{date_input}'" if date_input else "")
-                        + f", and file '{file_name}' not found in catalog."
-                    )
-                    return {
-                        "status": "not_found",
-                        "message": msg,
-                        "folders": [],
-                        "matches": [],
-                    }
-
-                site = self._site_of(rec)
-                folder = inputs_root / f"HUC{huc8}_{site}"
-                folder.mkdir(parents=True, exist_ok=True)
-
-                dl = download_fim_assets(
-                    rec, str(folder), return_period=None, download_flows=False
-                )
-
-                owp_path = None
-                if ensure_owp:
-                    # Check if the assumed file record has range metadata
-                    rec_start = rec.get("start_date_ymd")
-                    rec_end = rec.get("end_date_ymd")
-
-                    owp_path = self._ensure_owp_to(
-                        huc8=huc8,
-                        user_dt=date_input,
-                        dest_dir=str(folder),
-                        generate_if_missing=generate_owp_if_missing,
-                        return_period=return_period,
-                        start_date=rec_start or start_date,
-                        end_date=rec_end or end_date
-                    )
-
-                msg = (
-                    f"Used user-specified file '{file_name}' as benchmark reference. "
-                    f"Downloaded into '{folder}'."
-                )
+            if not found:
                 return {
-                    "status": "assumed",
-                    "message": msg,
-                    "folders": [
-                        {
-                            "label": site,
-                            "folder": str(folder),
-                            "records": [rec],
-                            "downloads": [{"record": rec, "downloads": dl}],
-                            "owp_path": owp_path,
-                        }
-                    ],
-                    "matches": [rec],
+                    "status": "not_found",
+                    "message": f"File '{file_name}' not found.",
+                    "folders": [],
                 }
 
-            msg = f"No strict benchmark match for HUC {huc8}" + (
-                f" and '{date_input}'" if date_input else ""
-            )
-            return {"status": "not_found", "message": msg, "folders": [], "matches": []}
+            target_rec = found[0]
+            target_recs = [target_rec]
 
-        # Group records by their event label
-        label_map: DefaultDict[str, List[Dict[str, Any]]] = defaultdict(list)
-        for rec in strict_matches:
-            label = (
-                self._date_label_from_user(date_input)
-                if date_input
-                else self._date_label_for_record(rec)
-            )
-            label_map[label].append(rec)
-
-        folders_out: List[Dict[str, Any]] = []
-        total_downloaded = 0
-        ran_return_period = False
-
-        for label, recs in sorted(label_map.items()):
-            dl_by_site: Dict[str, List[Dict[str, Any]]] = {}
-            for rec in recs:
-                site = self._site_of(rec)
-                folder = inputs_root / f"HUC{huc8}_{site}"
-                folder.mkdir(parents=True, exist_ok=True)
-
-                dl = download_fim_assets(
-                    rec, str(folder), return_period=None, download_flows=False
-                )
-                dl_by_site.setdefault(site, []).append({"record": rec, "downloads": dl})
-                if dl.get("tif") or dl.get("gpkg_files"):
-                    total_downloaded += 1
-
-            # Identify if this event is an HWM Range based on the first record
-            current_rec = recs[0]
-            rec_start = current_rec.get("start_date_ymd")
-            rec_end = current_rec.get("end_date_ymd")
-
-            user_dt = self._user_dt_from_label(label)
-
-            if ensure_owp and (return_period is not None) and (not ran_return_period):
-                dest_dirs = [
-                    str(inputs_root / f"HUC{huc8}_{site}") for site in dl_by_site
-                ]
-                self._generate_owp_return_period(huc8, int(return_period), dest_dirs)
-                ran_return_period = True
-
-            owp_src_copied_any = False
-            if ensure_owp:
-                for site in dl_by_site:
-                    folder = inputs_root / f"HUC{huc8}_{site}"
-                    owp_path = self._ensure_owp_to(
-                        huc8=huc8,
-                        user_dt=user_dt,
-                        dest_dir=str(folder),
-                        generate_if_missing=generate_owp_if_missing,
-                        return_period=return_period,
-                        start_date=rec_start or start_date,
-                        end_date=rec_end or end_date
-                    )
-                    if owp_path:
-                        owp_src_copied_any = True
-
-            for site, dl_records in dl_by_site.items():
-                folder = inputs_root / f"HUC{huc8}_{site}"
-                
-                # Dynamic pathing for the return dictionary
-                if rec_start and rec_end:
-                    expected_name = self._expected_owp_path_hwm(huc8, rec_start, rec_end).name
-                    final_owp_path = str(folder / expected_name) if owp_src_copied_any else None
+            # Filter HUCs using ArcGIS REST API if area threshold is provided
+            if huc_thresholdarea > 0:
+                finder = HUC8RESTFinder(debug=False)
+                gpkg_url = target_rec.get("gpkg_url")
+                if gpkg_url:
+                    s3_key = gpkg_url.split(".amazonaws.com/")[1]
+                    with tempfile.NamedTemporaryFile(suffix=".gpkg") as tmp:
+                        _download(BUCKET, s3_key, tmp.name)
+                        area_map = finder.get_huc_area_mapping(tmp.name)
+                        huc8_list = [
+                            h for h, pct in area_map.items() if pct >= huc_thresholdarea
+                        ]
                 else:
-                    final_owp_path = str(folder / f"NWM_{label}_{huc8}_inundation.tif") if (ensure_owp and owp_src_copied_any) else None
+                    huc8_list = _record_huc8_list(target_rec)
+            else:
+                # Fallback to all HUCs defined in the benchmark JSON
+                huc8_list = (
+                    [huc8]
+                    if (huc8 and huc8.strip() != "")
+                    else _record_huc8_list(target_rec)
+                )
+        else:
+            if not huc8:
+                return {
+                    "status": "error",
+                    "message": "Provide HUCID or file_name.",
+                    "folders": [],
+                }
+            huc8_list = [str(huc8).strip()]
 
-                folders_out.append(
-                    {
-                        "label": site if date_input else f"{label}:{site}",
-                        "folder": str(folder),
-                        "records": [d["record"] for d in dl_records],
-                        "downloads": dl_records,
-                        "owp_path": final_owp_path,
-                    }
+        # Infer temporal metadata for NWM retrospective if not explicitly provided
+        if target_recs and not any([date_input, start_date, end_date, return_period]):
+            rec = target_recs[0]
+            r_tier = str(rec.get("tier") or rec.get("quality") or "").upper()
+            if "HWM" in r_tier:
+                start_date, end_date = rec.get("start_date_ymd"), rec.get(
+                    "end_date_ymd"
+                )
+            elif "TIER 4" in r_tier or "TIER4" in r_tier:
+                return_period = rec.get("return_period")
+            else:
+                date_input = rec.get("date_ymd") or str(rec.get("event_ts", ""))[:8]
+
+        # Set up output root and identify benchmark site
+        inputs_root = Path(out_dir) if out_dir else Path.cwd() / "FIMevaluation_inputs"
+        inputs_root.mkdir(parents=True, exist_ok=True)
+        site = self._site_of(target_recs[0]) if target_recs else "site_unknown"
+
+        folders_out = []
+        generated_tif_paths = []
+
+        # Setup master folder for combined evaluation mode
+        if not eval_individual_huc:
+            target_folder = inputs_root / f"All_HUC_MOSAICED_{site}"
+            target_folder.mkdir(parents=True, exist_ok=True)
+            if target_recs:
+                download_fim_assets(
+                    target_recs[0], str(target_folder), return_period=return_period
                 )
 
-        # Build message
-        msg_bits = [f"Downloaded {total_downloaded} benchmark item(s) into '{inputs_root}'."]
-        if ensure_owp:
-            if return_period is not None:
-                msg_bits.append(f"OWP HAND FIM generated for {return_period} year return period.")
-            elif rec_start and rec_end:
-                msg_bits.append(f"OWP HAND FIM generated using MAXIMUM discharge for range {rec_start} to {rec_end}.")
-            else:
-                msg_bits.append("OWP HAND FIMs ensured per event.")
+        # Loop through HUCs to generate HAND FIM inundation maps
+        for h_id in huc8_list:
+            if eval_individual_huc:
+                target_folder = inputs_root / f"HUC{h_id}_{site}"
+                target_folder.mkdir(parents=True, exist_ok=True)
+                if target_recs:
+                    download_fim_assets(
+                        target_recs[0], str(target_folder), return_period=return_period
+                    )
 
-        return {
-            "status": "ok",
-            "message": " ".join(msg_bits),
-            "folders": folders_out,
-            "matches": strict_matches,
-        }
+            print(f"Generating HAND FIM for HUC {h_id}...")
+            owp_path = (
+                self._ensure_owp_to(
+                    huc8=h_id,
+                    user_dt=date_input,
+                    dest_dir=str(target_folder),
+                    generate_if_missing=generate_owp_if_missing,
+                    return_period=return_period,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+                if ensure_owp
+                else None
+            )
+
+            if owp_path:
+                generated_tif_paths.append(Path(owp_path))
+                folders_out.append(
+                    {"huc": h_id, "folder": str(target_folder), "owp_path": owp_path}
+                )
+
+        # Mosaic all generated HUC rasters into a single descriptive file
+        if not eval_individual_huc and len(generated_tif_paths) > 1:
+            import rasterio
+            from rasterio.merge import merge
+
+            print(
+                f"Mosaicking {len(generated_tif_paths)} rasters into descriptive composite..."
+            )
+            src_files = [rasterio.open(p) for p in generated_tif_paths]
+            mosaic, out_trans = merge(src_files)
+
+            # Configure final metadata with LZW compression and tiling
+            out_meta = src_files[0].meta.copy()
+            out_meta.update(
+                {
+                    "driver": "GTiff",
+                    "height": mosaic.shape[1],
+                    "width": mosaic.shape[2],
+                    "transform": out_trans,
+                    "compress": "lzw",
+                    "tiled": True,
+                    "blockxsize": 256,
+                    "blockysize": 256,
+                }
+            )
+
+            # Create the final descriptive filename
+            original_name = generated_tif_paths[0].name
+            mosaic_name = original_name.replace(huc8_list[0], "mosaicked_allhuc")
+            mosaic_path = target_folder / mosaic_name
+
+            with rasterio.open(mosaic_path, "w", **out_meta) as dest:
+                dest.write(mosaic)
+
+            for src in src_files:
+                src.close()
+
+            # Clean up individual HUC rasters to keep the folder tidy
+            print("Cleaning up intermediate individual HUC rasters...")
+            for p in generated_tif_paths:
+                if p.exists():
+                    os.remove(p)
+
+            print(f"Final mosaicked raster saved to: {mosaic_path.name}")
+            msg = f"Processed {len(huc8_list)} HUC(s) into one mosaicked file: {mosaic_path.name}"
+        else:
+            msg = f"Processed {len(huc8_list)} HUC(s)."
+        return {"status": "ok", "message": msg, "folders": folders_out}
 
     # Internals
     @staticmethod
@@ -538,11 +545,14 @@ class FIMService:
             existing = self._expected_owp_path_hwm(huc8, start_date, end_date)
             if existing.exists():
                 return self._copy_to_dest(existing, dest_dir)
-            
+
             if generate_if_missing:
                 produced = self._generate_owp(
-                    huc8=huc8, user_dt=None, return_period=return_period, 
-                    start_date=start_date, end_date=end_date
+                    huc8=huc8,
+                    user_dt=None,
+                    return_period=return_period,
+                    start_date=start_date,
+                    end_date=end_date,
                 )
                 if produced and produced.exists():
                     return self._copy_to_dest(produced, dest_dir)
@@ -594,12 +604,12 @@ class FIMService:
         return str(dst)
 
     def _generate_owp(
-        self, 
-        huc8: str, 
-        user_dt: Optional[str], 
+        self,
+        huc8: str,
+        user_dt: Optional[str],
         return_period: Optional[int] = None,
         start_date: Optional[str] = None,
-        end_date: Optional[str] = None
+        end_date: Optional[str] = None,
     ) -> Optional[Path]:
         """
         Main generation driver.
@@ -612,23 +622,27 @@ class FIMService:
         # Check existing first to avoid double processing
         if start_date and end_date:
             expected = self._expected_owp_path_hwm(huc8, start_date, end_date)
-            if expected.exists(): return expected
+            if expected.exists():
+                return expected
         elif user_dt:
             ymd, timestr = self._ymd_timestr_from_user(user_dt)
             expected = self._expected_owp_path(huc8, ymd, timestr)
-            if expected.exists(): return expected
+            if expected.exists():
+                return expected
 
-        print(f"Generating OWP HAND FIM for HUC {huc8}...")
+        print(f"**Generating OWP HAND FIM for HUC {huc8}...**")
         DownloadHUC8(huc8, version="4.8")
 
         # HWM Range --> Maximum Discharge over the date range
         if start_date and end_date:
-            print(f"Triggering NWM retrospective for range {start_date} to {end_date} (Sort: Maximum)")
+            print(
+                f"Triggering NWM retrospective for range {start_date} to {end_date} (Sort: Maximum)"
+            )
             getNWMretrospectivedata(
-                huc=str(huc8), 
-                start_date=start_date, 
-                end_date=end_date, 
-                discharge_sortby="maximum"
+                huc=str(huc8),
+                start_date=start_date,
+                end_date=end_date,
+                discharge_sortby="maximum",
             )
             runOWPHANDFIM(huc8)
             return self._expected_owp_path_hwm(huc8, start_date, end_date)
@@ -643,33 +657,34 @@ class FIMService:
         if user_dt:
             day = _to_date(user_dt)
             hh = _to_hour_or_none(user_dt)
-            stamp = f"{day:%Y-%m-%d}" if hh is None else f"{day:%Y-%m-%d} {hh:02d}:00:00"
+            stamp = (
+                f"{day:%Y-%m-%d}" if hh is None else f"{day:%Y-%m-%d} {hh:02d}:00:00"
+            )
             getNWMretrospectivedata(huc_event_dict={str(huc8): [stamp]})
             runOWPHANDFIM(huc8)
             ymd, timestr = self._ymd_timestr_from_user(user_dt)
             return self._expected_owp_path(huc8, ymd, timestr)
-        
+
         return None
-    
-#Main wrapper
+
+
+# Main wrapper
 def fim_lookup(
-    HUCID: str,
+    HUCID: Optional[str] = None,
     date_input: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     return_period: Optional[int] = None,
+    tier: Optional[str] = None,
     file_name: Optional[str] = None,
     run_handfim: bool = False,
     out_dir: Optional[str] = None,
+    huc_intersectedarea: bool = False,
+    huc_thresholdarea: float = 0.0,
+    eval_individual_huc: bool = False,
 ) -> str:
-    """
-    Simplified wrapper to interact with FIMService.
-    - If run_handfim is True: It triggers 'process' (Downloads + OWP Generation).
-    - If run_handfim is False: It triggers 'query' (Metadata listing).
-    """
     svc = FIMService()
 
-    # Filename provided OR run_handfim is True
     if file_name or run_handfim:
         rep = svc.process(
             huc8=HUCID,
@@ -679,12 +694,18 @@ def fim_lookup(
             out_dir=out_dir,
             file_name=file_name,
             return_period=return_period,
-            start_date=start_date, 
-            end_date=end_date 
+            start_date=start_date,
+            end_date=end_date,
+            tier=tier,
+            huc_thresholdarea=huc_thresholdarea,
+            eval_individual_huc=eval_individual_huc,
         )
         return rep.get("message", "")
 
-    # Just looking for what is available --> QUERY Mode
+    # Query Mode Logic
+    if not HUCID:
+        return "Error: HUCID is required for query mode (listing available benchmarks)."
+
     q = svc.query(
         HUCID=HUCID,
         date_input=date_input,
@@ -692,18 +713,13 @@ def fim_lookup(
         start_date=start_date,
         end_date=end_date,
         return_period=return_period,
+        tier=tier,
+        huc_intersectedarea=huc_intersectedarea,
+        huc_thresholdarea=huc_thresholdarea,
     )
-    
+
     txt = q.get("printable") or ""
     if not txt.strip():
-        return (
-            f"No benchmark FIMs matched for HUC {HUCID}. "
-            f"Range: [{start_date or '-∞'} , {end_date or '∞'}]"
-        )
+        return f"No benchmark FIMs matched for HUC {HUCID}."
 
-    header = "Following are the available benchmark data"
-    filt = [f"HUC {HUCID}"]
-    if date_input: filt.append(f"date '{date_input}'")
-    if start_date or end_date: filt.append(f"range [{start_date or '-∞'} , {end_date or '∞'}]")
-    
-    return f"{header} for {', '.join(filt)}:\n{txt}"
+    return f"Following are the available benchmark data for HUC {HUCID}:\n{txt}"
