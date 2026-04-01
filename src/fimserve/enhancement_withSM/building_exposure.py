@@ -17,7 +17,9 @@ import matplotlib.font_manager as fm
 from .interactS3 import getHUC8BoundaryByID
 
 
-def _ensure_boundary_path(boundary_gdf: gpd.GeoDataFrame) -> tuple[str, tempfile.TemporaryDirectory]:
+def _ensure_boundary_path(
+    boundary_gdf: gpd.GeoDataFrame,
+) -> tuple[str, tempfile.TemporaryDirectory]:
     """
     Writes boundary_gdf to a temporary GeoJSON and returns (path, tmpdir_handle).
     Keep tmpdir_handle alive while downstream code runs.
@@ -96,7 +98,9 @@ def get_building_exposure(boundary, flood_map, building_gpkg):
 
     # Precompute counts for binning
     fig_temp, ax_temp = plt.subplots()
-    temp_hb = ax_temp.hexbin(xs, ys, C=values, reduce_C_function=np.sum, gridsize=gridsize)
+    temp_hb = ax_temp.hexbin(
+        xs, ys, C=values, reduce_C_function=np.sum, gridsize=gridsize
+    )
     hex_counts = temp_hb.get_array()
     min_value = int(np.min(hex_counts))
     max_value = int(np.max(hex_counts))
@@ -120,7 +124,8 @@ def get_building_exposure(boundary, flood_map, building_gpkg):
     plt.imshow(flood_plot, extent=extent, origin="upper")
 
     hb = plt.hexbin(
-        xs, ys,
+        xs,
+        ys,
         C=values,
         reduce_C_function=np.sum,
         gridsize=gridsize,
@@ -159,15 +164,21 @@ def get_building_exposure(boundary, flood_map, building_gpkg):
     y_ticks = np.linspace(extent[2] + y_offset, extent[3], 4)
 
     plt.xticks(x_ticks, labels=[f"{x:.2f}°W" for x in x_ticks], fontsize=12)
-    plt.yticks(y_ticks, labels=[f"{y:.2f}°N" for y in y_ticks], fontsize=12, rotation=90)
+    plt.yticks(
+        y_ticks, labels=[f"{y:.2f}°N" for y in y_ticks], fontsize=12, rotation=90
+    )
 
     plt.xlabel("Longitude", fontsize=12)
     plt.ylabel("Latitude", fontsize=12)
     plt.tick_params(axis="both", labelsize=12)
 
     # Legend
-    flood_patch = Patch(facecolor="blue", edgecolor="blue", alpha=1, linewidth=1.5, label="Flooded area")
-    legend = plt.legend(handles=[flood_patch], loc="lower left", fontsize=12, frameon=True)
+    flood_patch = Patch(
+        facecolor="blue", edgecolor="blue", alpha=1, linewidth=1.5, label="Flooded area"
+    )
+    legend = plt.legend(
+        handles=[flood_patch], loc="lower left", fontsize=12, frameon=True
+    )
     legend.get_frame().set_facecolor("white")
     legend.get_frame().set_alpha(0.6)
     legend.get_frame().set_edgecolor("none")
@@ -258,7 +269,9 @@ def getbuilding_exposure(huc_id, boundary=None, geeprojectID=None):
             HUC_boundary = boundary.to_crs("EPSG:4326")
             boundary_path, tmpdir = _ensure_boundary_path(HUC_boundary)
         else:
-            raise ValueError("boundary must be a GeoDataFrame or path to a shapefile/geojson")
+            raise ValueError(
+                "boundary must be a GeoDataFrame or path to a shapefile/geojson"
+            )
     else:
         HUC_geojson = getHUC8BoundaryByID(huc_id)  # likely GeoSeries
         HUC_boundary = gpd.GeoDataFrame(geometry=HUC_geojson, crs="EPSG:4326")
@@ -267,7 +280,9 @@ def getbuilding_exposure(huc_id, boundary=None, geeprojectID=None):
     # Run msfootprint using the boundary path (not GeoDataFrame)
     try:
         if not building_gpkg.exists():
-            msf.BuildingFootprintwithISO(countryISO, boundary_path, out_dir, geeprojectID)
+            msf.BuildingFootprintwithISO(
+                countryISO, boundary_path, out_dir, geeprojectID
+            )
 
         # Load flood maps and compute building exposure plots
         flood_dir = Path(f"./Results/HUC{huc_id}")

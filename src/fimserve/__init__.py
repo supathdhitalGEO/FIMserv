@@ -27,34 +27,39 @@ from .FIMsubset.xycoord import subsetFIM
 # Fim visualization
 from .vizualizationFIM import vizualizeFIM
 
-
 # Statistics
 from .statistics.calculatestatistics import CalculateStatistics
 
 # For intersected HUC8 boundary
 from .intersectedHUC import getIntersectedHUC8ID
 
-
 # evaluation of FIM
 from .fimevaluation.fims_setup import FIMService, fim_lookup
 from .fimevaluation.run_fimeval import run_evaluation
 
 
-#Enhancement using surrogate models [Importing those only if they are called]
+# Enhancement using surrogate models [Importing those only if they are called]
 def prepare_FORCINGs(*args, **kwargs):
     from .enhancement_withSM.preprocessFIM import prepare_FORCINGs as _impl
+
     return _impl(*args, **kwargs)
+
 
 def enhanceFIM(*args, **kwargs):
     from .enhancement_withSM.SM_prediction import enhanceFIM as _impl
+
     return _impl(*args, **kwargs)
+
 
 def getbuilding_exposure(*args, **kwargs):
     from .enhancement_withSM.building_exposure import getbuilding_exposure as _impl
+
     return _impl(*args, **kwargs)
+
 
 def getpopulation_exposure(*args, **kwargs):
     from .enhancement_withSM.pop_exposure import getpopulation_exposure as _impl
+
     return _impl(*args, **kwargs)
 
 

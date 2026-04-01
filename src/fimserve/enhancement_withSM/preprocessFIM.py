@@ -14,7 +14,12 @@ import numpy as np
 import shutil
 from pathlib import Path
 from rasterio.mask import mask
-from rasterio.warp import calculate_default_transform, reproject, Resampling, transform_geom
+from rasterio.warp import (
+    calculate_default_transform,
+    reproject,
+    Resampling,
+    transform_geom,
+)
 from rasterio.features import bounds as geom_bounds
 import warnings
 import logging
@@ -22,7 +27,7 @@ import logging
 from .utlis import *
 from .interactS3 import *
 
-#Import the Streamflow data Download and FIM running module
+# Import the Streamflow data Download and FIM running module
 from ..datadownload import DownloadHUC8
 from ..streamflowdata.nwmretrospective import getNWMretrospectivedata
 from ..streamflowdata.forecasteddata import getNWMForecasteddata
@@ -33,39 +38,48 @@ logging.getLogger("rasterio._env").setLevel(logging.ERROR)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-#GET LOW FIDELITY USING FIMSERVE
-def get_LFFIM(huc_id, event_date=None, data='forecast', forecast_range=None, forecast_date=None, sort_by=None):
+# GET LOW FIDELITY USING FIMSERVE
+def get_LFFIM(
+    huc_id,
+    event_date=None,
+    data="forecast",
+    forecast_range=None,
+    forecast_date=None,
+    sort_by=None,
+):
     original_cwd = os.getcwd()
     try:
-        createCWD('fim')
+        createCWD("fim")
         DownloadHUC8(huc_id)
 
         # For retrospective event
-        if data == 'retrospective':
+        if data == "retrospective":
             if not event_date:
                 raise ValueError("event_date is required for retrospective analysis.")
             huc_event_dict = initialize_huc_event(huc_id, event_date)
             getNWMretrospectivedata(huc_event_dict=huc_event_dict)
 
         # For forecasting event
-        elif data == 'forecast':
+        elif data == "forecast":
             if not forecast_range:
-                raise ValueError("forecast_range ('short_range', 'medium_range', or 'long_range') is required for forecast.")
+                raise ValueError(
+                    "forecast_range ('short_range', 'medium_range', or 'long_range') is required for forecast."
+                )
 
-            if forecast_range in ['medium_range', 'long_range']:
+            if forecast_range in ["medium_range", "long_range"]:
                 if not sort_by:
-                    sort_by = 'maximum'
+                    sort_by = "maximum"
                 getNWMForecasteddata(
                     huc_id=huc_id,
                     forecast_range=forecast_range,
                     forecast_date=forecast_date,
-                    sort_by=sort_by
+                    sort_by=sort_by,
                 )
             else:
                 getNWMForecasteddata(
                     huc_id=huc_id,
                     forecast_range=forecast_range,
-                    forecast_date=forecast_date
+                    forecast_date=forecast_date,
                 )
         else:
             raise ValueError("data_type must be either 'retrospective' or 'forecast'.")
@@ -105,12 +119,12 @@ def remove_water_bodies(raster_path, PWB_water):
     return out_image, out_meta
 
 
-#Reproject raster if needed
+# Reproject raster if needed
 def reproject_raster(
     input_raster_path: str,
     output_file: str,
     target_crs: Union[str, dict] = "EPSG:4326",
-    target_resolution: float = 8.983152841195214829e-05
+    target_resolution: float = 8.983152841195214829e-05,
 ):
     if isinstance(target_crs, dict):
         target_crs = CRS.from_user_input(target_crs)
@@ -127,13 +141,15 @@ def reproject_raster(
         )
 
         kwargs = src.meta.copy()
-        kwargs.update({
-            "crs": target_crs,
-            "transform": transform,
-            "width": width,
-            "height": height,
-            "driver": "GTiff",
-        })
+        kwargs.update(
+            {
+                "crs": target_crs,
+                "transform": transform,
+                "width": width,
+                "height": height,
+                "driver": "GTiff",
+            }
+        )
 
         reprojected_data = np.empty((src.count, height, width), dtype=src.dtypes[0])
 
@@ -153,24 +169,22 @@ def reproject_raster(
         dst.write(reprojected_data.squeeze(), 1)
 
 
-#Raster to binary
-def raster2binary(
-    input_raster_path,
-    geometry,
-    final_raster_path
-):
+# Raster to binary
+def raster2binary(input_raster_path, geometry, final_raster_path):
     # Mask the raster with the geometry
     with rasterio.open(input_raster_path) as src:
         out_image, out_transform = mask(src, geometry, crop=True, filled=True, nodata=0)
         out_meta = src.meta.copy()
-        out_meta.update({
-            "driver": "GTiff",
-            "height": out_image.shape[1],
-            "width": out_image.shape[2],
-            "transform": out_transform,
-            "crs": src.crs,
-            "nodata": 0,
-        })
+        out_meta.update(
+            {
+                "driver": "GTiff",
+                "height": out_image.shape[1],
+                "width": out_image.shape[2],
+                "transform": out_transform,
+                "crs": src.crs,
+                "nodata": 0,
+            }
+        )
 
     # Convert to binary
     binary_image = (out_image > 0).astype("uint8")
@@ -180,21 +194,25 @@ def raster2binary(
         dst.write(binary_image)
 
 
-#Masking with PWB and save the final raster
-def mask_with_PWB(input_raster_path, output_raster_path, input_depth=None, output_depth=None):
+# Masking with PWB and save the final raster
+def mask_with_PWB(
+    input_raster_path, output_raster_path, input_depth=None, output_depth=None
+):
     PWB_shp = PWB_inS3(fs, bucket_name)
     shapes = load_shapes(PWB_shp)
 
     with rasterio.open(input_raster_path) as src:
         out_image, out_transform = mask(src, shapes, invert=True)
         out_meta = src.meta.copy()
-        out_meta.update({
-            "driver": "GTiff",
-            "height": out_image.shape[1],
-            "width": out_image.shape[2],
-            "transform": out_transform,
-            "crs": src.crs
-        })
+        out_meta.update(
+            {
+                "driver": "GTiff",
+                "height": out_image.shape[1],
+                "width": out_image.shape[2],
+                "transform": out_transform,
+                "crs": src.crs,
+            }
+        )
 
     with rasterio.open(output_raster_path, "w", **out_meta) as dst:
         dst.write(out_image)
@@ -203,23 +221,23 @@ def mask_with_PWB(input_raster_path, output_raster_path, input_depth=None, outpu
         with rasterio.open(input_depth) as src:
             out_image, out_transform = mask(src, shapes, invert=True)
             out_meta = src.meta.copy()
-            out_meta.update({
-                "driver": "GTiff",
-                "height": out_image.shape[1],
-                "width": out_image.shape[2],
-                "transform": out_transform,
-                "crs": src.crs
-            })
+            out_meta.update(
+                {
+                    "driver": "GTiff",
+                    "height": out_image.shape[1],
+                    "width": out_image.shape[2],
+                    "transform": out_transform,
+                    "crs": src.crs,
+                }
+            )
 
         with rasterio.open(output_depth, "w", **out_meta) as dst:
             dst.write(out_image)
 
 
-#Align the raster to the reference raster
+# Align the raster to the reference raster
 def align_raster(
-    hand_fim_raster_path: str,
-    reference_raster_path: str,
-    output_fim_aligned_path: str
+    hand_fim_raster_path: str, reference_raster_path: str, output_fim_aligned_path: str
 ):
     with rasterio.open(reference_raster_path) as ref:
         ref_meta = ref.meta.copy()
@@ -243,19 +261,22 @@ def align_raster(
             dst_crs=ref_crs,
             dst_width=ref_width,
             dst_height=ref_height,
-            resampling=Resampling.nearest
+            resampling=Resampling.nearest,
         )
 
-    ref_meta.update({
-        "driver": "GTiff",
-        "dtype": src_dtype,
-        "count": 1,
-        "compress": "lzw",
-        "nodata": 0
-    })
+    ref_meta.update(
+        {
+            "driver": "GTiff",
+            "dtype": src_dtype,
+            "count": 1,
+            "compress": "lzw",
+            "nodata": 0,
+        }
+    )
 
     with rasterio.open(output_fim_aligned_path, "w", **ref_meta) as dst:
         dst.write(aligned_data, 1)
+
 
 # Clip forcings by a boundary is user is providing the boundary that falls within preparing HUC8
 def _bbox_overlaps(b1, b2) -> bool:
@@ -282,7 +303,9 @@ def _load_boundary_geometries_from_vector(vector_path: Union[str, Path]):
     return shapes, crs
 
 
-def _ensure_list_of_geoms_and_crs(boundary_geometry, boundary_crs: Union[str, dict] = "EPSG:4326"):
+def _ensure_list_of_geoms_and_crs(
+    boundary_geometry, boundary_crs: Union[str, dict] = "EPSG:4326"
+):
     """
     Normalize boundary input to:
       geoms: list of GeoJSON-like geometry dicts (for rasterio.mask.mask)
@@ -304,11 +327,17 @@ def _ensure_list_of_geoms_and_crs(boundary_geometry, boundary_crs: Union[str, di
             if not geoms:
                 raise ValueError(f"No geometries found in boundary file: {p}")
             # If file has no CRS, fall back to provided boundary_crs
-            crs = crs_from_file if crs_from_file is not None else CRS.from_user_input(boundary_crs)
+            crs = (
+                crs_from_file
+                if crs_from_file is not None
+                else CRS.from_user_input(boundary_crs)
+            )
             return geoms, crs
 
         # If it is a string but not a file, treat as invalid
-        raise ValueError(f"clip_boundary was a string but not a valid file path: {boundary_geometry}")
+        raise ValueError(
+            f"clip_boundary was a string but not a valid file path: {boundary_geometry}"
+        )
 
     # If user passed list of shapes
     if isinstance(boundary_geometry, (list, tuple)):
@@ -339,7 +368,7 @@ def clip_raster_inplace_to_boundary(
     raster_path: Path,
     boundary_geometry,
     boundary_crs: Union[str, dict] = "EPSG:4326",
-    nodata_value: int = 0
+    nodata_value: int = 0,
 ) -> Path:
     """
     Clip a raster to boundary_geometry, write to <stem>_Clipped.tif,
@@ -352,9 +381,13 @@ def clip_raster_inplace_to_boundary(
       persists outside the boundary (no "black dots"/artifacts outside the clip).
     """
     raster_path = Path(raster_path)
-    clipped_path = raster_path.with_name(f"{raster_path.stem}_clipped{raster_path.suffix}")
+    clipped_path = raster_path.with_name(
+        f"{raster_path.stem}_clipped{raster_path.suffix}"
+    )
 
-    geoms, b_crs = _ensure_list_of_geoms_and_crs(boundary_geometry, boundary_crs=boundary_crs)
+    geoms, b_crs = _ensure_list_of_geoms_and_crs(
+        boundary_geometry, boundary_crs=boundary_crs
+    )
     if not geoms:
         raise ValueError("boundary_geometry is empty; cannot clip.")
 
@@ -368,7 +401,9 @@ def clip_raster_inplace_to_boundary(
 
         # Transform boundary geometry into forcing CRS if needed
         if src_crs != b_crs:
-            geoms_in_src = [transform_geom(b_crs, src_crs, g, precision=6) for g in geoms]
+            geoms_in_src = [
+                transform_geom(b_crs, src_crs, g, precision=6) for g in geoms
+            ]
         else:
             geoms_in_src = geoms
 
@@ -379,7 +414,7 @@ def clip_raster_inplace_to_boundary(
             crop=True,
             filled=True,
             nodata=nodata_value,
-            all_touched=False
+            all_touched=False,
         )
 
         # mask() already filled; the key is to force dtype + nodata consistency
@@ -387,14 +422,16 @@ def clip_raster_inplace_to_boundary(
             out_image = out_image.astype(src.dtypes[0], copy=False)
 
         out_meta = src.meta.copy()
-        out_meta.update({
-            "driver": "GTiff",
-            "height": out_image.shape[1],
-            "width": out_image.shape[2],
-            "transform": out_transform,
-            "crs": src_crs,
-            "nodata": nodata_value,
-        })
+        out_meta.update(
+            {
+                "driver": "GTiff",
+                "height": out_image.shape[1],
+                "width": out_image.shape[2],
+                "transform": out_transform,
+                "crs": src_crs,
+                "nodata": nodata_value,
+            }
+        )
 
     # Write clipped raster first
     with rasterio.open(clipped_path, "w", **out_meta) as dst:
@@ -416,9 +453,7 @@ def clip_raster_inplace_to_boundary(
 
 
 def clip_all_forcings_if_boundary_overlaps(
-    forcing_dir: Path,
-    boundary_geometry,
-    boundary_crs: Union[str, dict] = "EPSG:4326"
+    forcing_dir: Path, boundary_geometry, boundary_crs: Union[str, dict] = "EPSG:4326"
 ) -> Dict[Path, Path]:
     """
     Updated behavior (per request):
@@ -444,7 +479,9 @@ def clip_all_forcings_if_boundary_overlaps(
     if not tifs:
         raise FileNotFoundError(f"No .tif forcing rasters found in: {forcing_dir}")
 
-    geoms, b_crs = _ensure_list_of_geoms_and_crs(boundary_geometry, boundary_crs=boundary_crs)
+    geoms, b_crs = _ensure_list_of_geoms_and_crs(
+        boundary_geometry, boundary_crs=boundary_crs
+    )
     if not geoms:
         raise ValueError("boundary_geometry is empty; cannot clip forcings.")
 
@@ -464,12 +501,19 @@ def clip_all_forcings_if_boundary_overlaps(
 
             # Transform boundary geometries into this forcing CRS before overlap check
             if src.crs != b_crs_local:
-                geoms_in_src = [transform_geom(b_crs_local, src.crs, g, precision=6) for g in geoms]
+                geoms_in_src = [
+                    transform_geom(b_crs_local, src.crs, g, precision=6) for g in geoms
+                ]
             else:
                 geoms_in_src = geoms
 
             boundary_bbox = _union_bounds(geoms_in_src)
-            raster_bbox = (src.bounds.left, src.bounds.bottom, src.bounds.right, src.bounds.top)
+            raster_bbox = (
+                src.bounds.left,
+                src.bounds.bottom,
+                src.bounds.right,
+                src.bounds.top,
+            )
 
             if not _bbox_overlaps(boundary_bbox, raster_bbox):
                 non_overlapping.append(tif)
@@ -481,7 +525,7 @@ def clip_all_forcings_if_boundary_overlaps(
             "Boundary does not overlap with all forcing rasters. "
             "Skipping forcing clipping and keeping original forcing rasters.\n"
             f"Non-overlapping rasters:\n{missing}",
-            category=UserWarning
+            category=UserWarning,
         )
         return {}
 
@@ -492,7 +536,7 @@ def clip_all_forcings_if_boundary_overlaps(
             raster_path=tif,
             boundary_geometry=boundary_geometry,
             boundary_crs=boundary_crs,
-            nodata_value=0
+            nodata_value=0,
         )
         mapping[tif] = new_path
 
@@ -503,12 +547,16 @@ def clip_fim_to_boundary(
     fim_raster_path: Path,
     boundary_geometry,
     boundary_crs: Union[str, dict] = "EPSG:4326",
-    nodata_value: int = 0
+    nodata_value: int = 0,
 ) -> Path:
     fim_raster_path = Path(fim_raster_path)
-    clipped_path = fim_raster_path.with_name(f"{fim_raster_path.stem}_clipped{fim_raster_path.suffix}")
+    clipped_path = fim_raster_path.with_name(
+        f"{fim_raster_path.stem}_clipped{fim_raster_path.suffix}"
+    )
 
-    geoms, b_crs = _ensure_list_of_geoms_and_crs(boundary_geometry, boundary_crs=boundary_crs)
+    geoms, b_crs = _ensure_list_of_geoms_and_crs(
+        boundary_geometry, boundary_crs=boundary_crs
+    )
     if not geoms:
         raise ValueError("boundary_geometry is empty; cannot clip.")
 
@@ -521,7 +569,9 @@ def clip_fim_to_boundary(
             b_crs = src_crs
 
         if src_crs != b_crs:
-            geoms_in_src = [transform_geom(b_crs, src_crs, g, precision=6) for g in geoms]
+            geoms_in_src = [
+                transform_geom(b_crs, src_crs, g, precision=6) for g in geoms
+            ]
         else:
             geoms_in_src = geoms
 
@@ -531,21 +581,23 @@ def clip_fim_to_boundary(
             crop=True,
             filled=True,
             nodata=nodata_value,
-            all_touched=False
+            all_touched=False,
         )
 
         if out_image.dtype != src.dtypes[0]:
             out_image = out_image.astype(src.dtypes[0], copy=False)
 
         out_meta = src.meta.copy()
-        out_meta.update({
-            "driver": "GTiff",
-            "height": out_image.shape[1],
-            "width": out_image.shape[2],
-            "transform": out_transform,
-            "crs": src_crs,
-            "nodata": nodata_value,
-        })
+        out_meta.update(
+            {
+                "driver": "GTiff",
+                "height": out_image.shape[1],
+                "width": out_image.shape[2],
+                "transform": out_transform,
+                "crs": src_crs,
+                "nodata": nodata_value,
+            }
+        )
 
     with rasterio.open(clipped_path, "w", **out_meta) as dst:
         dst.write(out_image)
@@ -562,12 +614,12 @@ def clip_fim_to_boundary(
 def prepare_FORCINGs(
     huc_id,
     event_date=None,
-    data='retrospective',
+    data="retrospective",
     forecast_range=None,
     forecast_date=None,
     sort_by=None,
     clip_boundary=None,
-    clip_boundary_crs: Union[str, dict] = "EPSG:4326"
+    clip_boundary_crs: Union[str, dict] = "EPSG:4326",
 ):
 
     # GET FORCINGS
@@ -576,7 +628,7 @@ def prepare_FORCINGs(
     print("Forcings downloaded successfully.\n")
 
     # If here, some boundary is passed, If that boundary overlaps with all the forcings,
-    forcing_dir = Path(f'./HUC{huc_id}_forcings')
+    forcing_dir = Path(f"./HUC{huc_id}_forcings")
 
     mapping = {}
     did_clip_forcings = False
@@ -585,7 +637,7 @@ def prepare_FORCINGs(
         mapping = clip_all_forcings_if_boundary_overlaps(
             forcing_dir=forcing_dir,
             boundary_geometry=clip_boundary,
-            boundary_crs=clip_boundary_crs
+            boundary_crs=clip_boundary_crs,
         )
         if mapping:
             did_clip_forcings = True
@@ -595,13 +647,20 @@ def prepare_FORCINGs(
 
     # GET THE FIM FILES
     print(f"Generating the FIM files for {data} event...\n")
-    get_LFFIM(huc_id, event_date=event_date, data=data, forecast_range=forecast_range, forecast_date=forecast_date, sort_by=sort_by)
+    get_LFFIM(
+        huc_id,
+        event_date=event_date,
+        data=data,
+        forecast_range=forecast_range,
+        forecast_date=forecast_date,
+        sort_by=sort_by,
+    )
     print("FIM files generated successfully.\n")
 
     # PREPROCESSING THE FIM FILES
     print("Preprocessing the FIM files...\n")
-    cwd = Path('./fim')
-    fim_dir = cwd / f'output/flood_{huc_id}/{huc_id}_inundation/'
+    cwd = Path("./fim")
+    fim_dir = cwd / f"output/flood_{huc_id}/{huc_id}_inundation/"
     fim_files = sorted(fim_dir.glob("*.tif"))
 
     # Get the HUC8 boundary
@@ -611,21 +670,21 @@ def prepare_FORCINGs(
     reference_dir = mapping.get(lulc_original, lulc_original)
 
     for FIM in fim_files:
-        out_dir = fim_dir / 'processing'
+        out_dir = fim_dir / "processing"
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # Reproject the FIM file
-        FIM_file = out_dir / f'{FIM.stem}_reprojected.tif'
+        FIM_file = out_dir / f"{FIM.stem}_reprojected.tif"
         reproject_raster(FIM, FIM_file)
         compress_tif_lzw(FIM_file)
 
         # Convert to binary
-        out_dir_binary = out_dir / f'{FIM.stem}_binary.tif'
+        out_dir_binary = out_dir / f"{FIM.stem}_binary.tif"
         raster2binary(FIM_file, HUC_boundary, out_dir_binary)
         compress_tif_lzw(out_dir_binary)
 
         # Mask and clip with PWB
-        final_raster = out_dir / f'{FIM.stem}_final.tif'
+        final_raster = out_dir / f"{FIM.stem}_final.tif"
         mask_with_PWB(out_dir_binary, final_raster)
         compress_tif_lzw(final_raster)
 
@@ -636,15 +695,15 @@ def prepare_FORCINGs(
                 fim_raster_path=final_raster,
                 boundary_geometry=clip_boundary,
                 boundary_crs=clip_boundary_crs,
-                nodata_value=0
+                nodata_value=0,
             )
 
         # Align final FIM raster with reference raster
         fim_name = FIM.stem
         if did_clip_forcings and clip_boundary is not None:
-            FIM_finaldir = forcing_dir / f'hand_{fim_name}_clipped.tif'
+            FIM_finaldir = forcing_dir / f"hand_{fim_name}_clipped.tif"
         else:
-            FIM_finaldir = forcing_dir / f'hand_{fim_name}.tif'
+            FIM_finaldir = forcing_dir / f"hand_{fim_name}.tif"
 
         align_raster(final_for_alignment, reference_dir, FIM_finaldir)
 

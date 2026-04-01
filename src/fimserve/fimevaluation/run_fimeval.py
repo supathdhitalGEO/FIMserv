@@ -7,7 +7,8 @@ Date: 18 Nov, 2025
 import os
 from pathlib import Path
 from typing import Optional
-import fimeval as fe # type: ignore
+import fimeval as fe  # type: ignore
+
 
 class run_evaluation:
     """
@@ -31,45 +32,50 @@ class run_evaluation:
     print_graphs : bool; If True, generates and saves contingency maps and evaluation metric plots.
     Evalwith_BF : bool; If True, performs building-footprint-based exposure evaluation.
     """
+
     def __init__(
         self,
-        Main_dir: Optional[str] = None,   #If user use their own input directory to save benchmark FIM outputs
+        Main_dir: Optional[
+            str
+        ] = None,  # If user use their own input directory to save benchmark FIM outputs
         output_dir: Optional[str] = None,
         shapefile_path: Optional[str] = None,
         PWB_dir: Optional[str] = None,
         building_footprint: Optional[str] = None,
         target_crs: Optional[str] = None,
         target_resolution: Optional[float] = None,
-        method_name: Optional[str] = None, #By default it will use 'AOI' which is downloaded but incase user want to explore different method they can pass here
+        method_name: Optional[
+            str
+        ] = None,  # By default it will use 'AOI' which is downloaded but incase user want to explore different method they can pass here
         print_graphs: bool = False,
-        Evalwith_BF: bool = False,  #If user want to run evaluation with building footprint
-        ):
+        Evalwith_BF: bool = False,  # If user want to run evaluation with building footprint
+    ):
         if Main_dir is None:
             self.Main_dir = os.path.join(os.getcwd(), "FIMevaluation_inputs")
         else:
             self.Main_dir = Main_dir
-        
+
         self.shapefile_path = shapefile_path
-        
+
         if output_dir is None:
             self.output_dir = os.path.join(os.getcwd(), "FIMevaluation_results")
         else:
             self.output_dir = output_dir
-            
+
         self.PWB_dir = PWB_dir
         self.building_footprint = building_footprint
         self.target_crs = target_crs
         self.target_resolution = target_resolution
         if method_name is None:
-            self.method_name = 'AOI'
+            self.method_name = "AOI"
         else:
             self.method_name = method_name
         self.Evalwith_BF = Evalwith_BF
         self.print_graphs = print_graphs
-        
-        #run the process
+
+        # run the process
         self.run_eval()
-        
+
     def run_eval(self):
         fe.EvaluateFIM(
             main_dir=self.Main_dir,
@@ -80,7 +86,7 @@ class run_evaluation:
             target_crs=self.target_crs,
             target_resolution=self.target_resolution,
         )
-        
+
         if self.print_graphs:
             fe.PrintContingencyMap(
                 main_dir=self.Main_dir,
@@ -92,7 +98,7 @@ class run_evaluation:
                 method_name=self.method_name,
                 out_dir=self.output_dir,
             )
-        
+
         if self.Evalwith_BF:
             try:
                 fe.EvaluationWithBuildingFootprint(
@@ -103,5 +109,3 @@ class run_evaluation:
                 )
             except Exception as e:
                 print("Skipping evaluation with building footprint due to error:", e)
-            
-

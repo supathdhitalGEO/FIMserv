@@ -11,36 +11,38 @@ from rasterio.mask import mask
 fs = s3fs.S3FileSystem(anon=True)
 bucket_name = "sdmlab"
 
+
 # FINDING THE INTERSECTED HUC8 AND RETURNING GEOMETRY IN WGS84
 def HUC8_inS3(fs, bucket, prefix="HUC8_boundaries/"):
     files = fs.ls(f"{bucket}/{prefix}")
-    gpkg_key = next((f for f in files if f.endswith('.gpkg')), None)
+    gpkg_key = next((f for f in files if f.endswith(".gpkg")), None)
 
     if gpkg_key is None:
         raise FileNotFoundError(f"No .gpkg file found in s3://{bucket}/{prefix}")
 
     # Download and read GeoPackage into a GeoDataFrame
-    with fs.open(gpkg_key, 'rb') as s3file:
+    with fs.open(gpkg_key, "rb") as s3file:
         with tempfile.NamedTemporaryFile(suffix=".gpkg", delete=False) as tmp_file:
             tmp_file.write(s3file.read())
             tmp_path = tmp_file.name
-    
+
     gdf = gpd.read_file(tmp_path)
     return gdf
+
 
 # WRAPPING ALL FUNCTIONS
 def getHUC8BoundaryByID(huc_id):
     huc8_gdf = HUC8_inS3(fs, bucket_name)
     if huc8_gdf.crs != "EPSG:4326":
         huc8_gdf = huc8_gdf.to_crs("EPSG:4326")
-    selected = huc8_gdf[huc8_gdf['HUC8'] == huc_id]
+    selected = huc8_gdf[huc8_gdf["HUC8"] == huc_id]
     if selected.empty:
         raise ValueError(f"HUC8 ID {huc_id} not found in the boundary file.")
-    
+
     return selected.geometry
 
 
-#PWB of CONUS rivers
+# PWB of CONUS rivers
 def PWB_inS3(fs, bucket, prefix="PWB/"):
     tmp_dir = tempfile.mkdtemp()
     files = fs.ls(f"{bucket}/{prefix}")
@@ -48,10 +50,10 @@ def PWB_inS3(fs, bucket, prefix="PWB/"):
     # Filter out relevant shapefile components
     for file_key in files:
         file_name = os.path.basename(file_key)
-        if file_name.endswith(('.shp', '.shx', '.dbf', '.prj', '.cpg')):
-            with fs.open(file_key, 'rb') as s3file:
+        if file_name.endswith((".shp", ".shx", ".dbf", ".prj", ".cpg")):
+            with fs.open(file_key, "rb") as s3file:
                 local_path = os.path.join(tmp_dir, file_name)
-                with open(local_path, 'wb') as local_file:
+                with open(local_path, "wb") as local_file:
                     local_file.write(s3file.read())
 
     # Ensure we got a .shp file
@@ -61,9 +63,10 @@ def PWB_inS3(fs, bucket, prefix="PWB/"):
 
     return os.path.join(tmp_dir, shp_files[0])
 
-#GET FORCINGS
+
+# GET FORCINGS
 def get_forcings(huc_id, downloadforcings=True):
-    s3_prefix = f"SM_dataset/HUCIDs_forcings/HUC{huc_id}/"  
+    s3_prefix = f"SM_dataset/HUCIDs_forcings/HUC{huc_id}/"
     local_folder = Path(f"HUC{huc_id}_forcings")
     local_folder.mkdir(exist_ok=True)
 
@@ -84,14 +87,17 @@ def get_forcings(huc_id, downloadforcings=True):
     else:
         print(f"Skipping download; using existing benchmark data for HUC{huc_id}")
 
-def get_population_GRID(boundary_gdf, fs = fs, bucket=bucket_name, prefix="SM_dataset/gridded_population/"):
+
+def get_population_GRID(
+    boundary_gdf, fs=fs, bucket=bucket_name, prefix="SM_dataset/gridded_population/"
+):
     files = fs.ls(f"{bucket}/{prefix}")
-    tif_key = next((f for f in files if f.endswith('.tif')), None)
+    tif_key = next((f for f in files if f.endswith(".tif")), None)
 
     if tif_key is None:
         raise FileNotFoundError(f"No .tif file found in s3://{bucket}/{prefix}")
 
-    with fs.open(tif_key, 'rb') as s3file:
+    with fs.open(tif_key, "rb") as s3file:
         with tempfile.NamedTemporaryFile(suffix=".tif", delete=False) as tmp_file:
             tmp_file.write(s3file.read())
             tmp_tif_path = tmp_file.name
@@ -102,9 +108,11 @@ def get_population_GRID(boundary_gdf, fs = fs, bucket=bucket_name, prefix="SM_da
         out_image, out_transform = mask(src, geoms, crop=True)
         out_meta = src.meta.copy()
 
-    out_meta.update({
-        "height": out_image.shape[1],
-        "width": out_image.shape[2],
-        "transform": out_transform
-    })
+    out_meta.update(
+        {
+            "height": out_image.shape[1],
+            "width": out_image.shape[2],
+            "transform": out_transform,
+        }
+    )
     return out_image, out_meta

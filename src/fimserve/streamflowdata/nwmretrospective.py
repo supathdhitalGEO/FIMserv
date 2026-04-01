@@ -8,6 +8,53 @@ import teehr.fetching.nwm.retrospective_points as nwm_retro
 from ..datadownload import setup_directories
 
 
+# Aggregated discharge for a certain time range (max, min, mean)
+def get_aggregated_discharge(
+    retrospective_dir, location_ids_file, start_date, end_date, data_dir, huc, sortby
+):
+    """
+    Calculates max, min, or mean discharge over a specific parquet file range.
+    """
+    retrospective_dir = Path(retrospective_dir)
+    all_data = pd.DataFrame()
+
+    # Load only the relevant parquet file for this range
+    formatted_filename = (
+        f"{start_date.replace('-', '')}_{end_date.replace('-', '')}.parquet"
+    )
+    file_path = retrospective_dir / formatted_filename
+
+    if not file_path.exists():
+        print(f"File {file_path} not found for aggregation.")
+        return
+
+    df = pd.read_parquet(file_path)
+
+    # Filter by location IDs
+    locationID_df = pd.read_csv(location_ids_file)
+    target_ids = [f"nwm30-{int(fid)}" for fid in locationID_df["feature_id"]]
+    df = df[df["location_id"].isin(target_ids)].copy()
+    df["feature_id"] = df["location_id"].str.replace("nwm30-", "")
+
+    # Aggregate based on sortby
+    if sortby == "maximum":
+        discharge_data = df.groupby("feature_id")["value"].max().reset_index()
+    elif sortby == "minimum":
+        discharge_data = df.groupby("feature_id")["value"].min().reset_index()
+    elif sortby == "mean":
+        discharge_data = df.groupby("feature_id")["value"].mean().reset_index()
+    else:
+        return
+
+    discharge_data.rename(columns={"value": "discharge"}, inplace=True)
+
+    # Save with the requested filename format
+    fname = f"NWM_{start_date.replace('-', '')}_{end_date.replace('-', '')}_{sortby}_{huc}.csv"
+    output_path = os.path.join(data_dir, fname)
+    discharge_data.to_csv(output_path, index=False)
+    print(f"Sorted ({sortby}) discharge saved to {output_path}")
+
+
 def getdischargeforspecifiedtime(
     retrospective_dir, location_ids, specific_date, data_dir, huc, date_type
 ):
@@ -100,18 +147,23 @@ def determinedatatimeformat(date_str):
     if isinstance(date_str, pd.Timestamp):
         return "datetime"
     try:
-        parsed_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        datetime.strptime(date_str, "%Y-%m-%d").date()
         return "date"
     except ValueError:
         try:
-            parsed_datetime = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+            datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
             return "datetime"
         except ValueError:
             return "invalid"
 
 
 def getNWMretrospectivedata(
-    huc=None, start_date=None, end_date=None, value_times=None, huc_event_dict=None
+    huc=None,
+    start_date=None,
+    end_date=None,
+    value_times=None,
+    huc_event_dict=None,
+    discharge_sortby=None,
 ):
     """
     Fetches NWM retrospective discharge data.
@@ -124,98 +176,92 @@ def getNWMretrospectivedata(
     :param value_times: List of specific timestamps for a single HUC.
     :param huc_event_dict: Dictionary of HUCs with specific timestamps.
     """
+
     code_dir, data_dir, output_dir = setup_directories()
 
+    # Handle Dictionary Input
     if huc_event_dict:
-        for huc, value_times in huc_event_dict.items():
-            HUC_dir = os.path.join(output_dir, f"flood_{huc}")
-            # If huc directory does not exist, print the message and continue to the next HUC
-            if not os.path.exists(HUC_dir):
-                print(
-                    f"Directory for {huc} does not exist. Download it with DownloadHUC8 module."
-                )
-                continue
-            featureID_dir = os.path.join(HUC_dir, f"feature_IDs.csv")
-            discharge_dir = os.path.join(HUC_dir, "discharge")
-            retrospective_dir = os.path.join(discharge_dir, "nwm30_retrospective")
+        for h_id, v_times in huc_event_dict.items():
+            _process_huc_request(
+                h_id, None, None, v_times, output_dir, data_dir, discharge_sortby
+            )
 
-            if not os.path.exists(featureID_dir):
-                continue
-
-            initial_retrospective = os.path.exists(retrospective_dir)
-
-            for time in value_times:
-                date_type = determinedatatimeformat(time)
-                time_obj = pd.to_datetime(time)
-                if date_type == "date":
-                    lag_date = (time_obj - timedelta(days=1)).strftime("%Y-%m-%d")
-                    lead_date = (time_obj + timedelta(days=1)).strftime("%Y-%m-%d")
-                elif date_type == "datetime":
-                    lag_date = (time_obj - timedelta(hours=1)).strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
-                    lead_date = (time_obj + timedelta(hours=1)).strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
-                else:
-                    print(f"Invalid date format: {time}")
-                    continue
-
-                getnwm_discharge(lag_date, lead_date, featureID_dir, HUC_dir)
-
-                # Extract discharge values for the actual timestamp
-                getdischargeforspecifiedtime(
-                    retrospective_dir, featureID_dir, time, data_dir, huc, date_type
-                )
-
-                formatted_filename = (
-                    f"{lag_date.replace('-', '')}_{lead_date.replace('-', '')}.parquet"
-                )
-                file_path = os.path.join(retrospective_dir, formatted_filename)
-                # Delete the newly created file
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-
-            # If the discharge directory is not exist just delete it completely once operation is done
-            if not initial_retrospective and os.path.exists(discharge_dir):
-                shutil.rmtree(discharge_dir)
-            print(f"Processing complete for {time} of {huc}.")
-
+    # Handle Single HUC Input
     else:
         if not huc:
-            raise ValueError("You must provide a valid 'huc'.")
-        if not ((start_date and end_date) or value_times):
-            raise ValueError(
-                "You must provide either a date range (start_date and end_date) or a list of value_times."
+            raise ValueError("You must provide a 'huc'.")
+        _process_huc_request(
+            huc,
+            start_date,
+            end_date,
+            value_times,
+            output_dir,
+            data_dir,
+            discharge_sortby,
+        )
+
+
+def _process_huc_request(
+    huc, start_date, end_date, value_times, output_root, data_dir, discharge_sortby
+):
+    huc_dir = os.path.join(output_root, f"flood_{huc}")
+    if not os.path.exists(huc_dir):
+        print(f"Directory for {huc} missing. Run DownloadHUC8 first.")
+        return
+
+    fid_path = os.path.join(huc_dir, "feature_IDs.csv")
+    discharge_root = os.path.join(huc_dir, "discharge")
+    retro_dir = os.path.join(discharge_root, "nwm30_retrospective")
+    initial_exists = os.path.exists(retro_dir)
+
+    # Date Range provided
+    if start_date and end_date:
+        getnwm_discharge(start_date, end_date, fid_path, huc_dir)
+        if discharge_sortby:
+            get_aggregated_discharge(
+                retro_dir,
+                fid_path,
+                start_date,
+                end_date,
+                data_dir,
+                huc,
+                discharge_sortby,
             )
 
-        HUC_dir = os.path.join(output_dir, f"flood_{huc}")
-        featureID_dir = os.path.join(HUC_dir, "feature_IDs.csv")
+    # Specific Timestamps provided
+    if value_times:
+        for time in value_times:
+            dtype = determinedatatimeformat(time)
+            t_obj = pd.to_datetime(time)
 
-        if start_date and end_date:
-            start_date_obj = pd.to_datetime(start_date)
-            end_date_obj = pd.to_datetime(end_date)
+            # Determine window
+            if dtype == "date":
+                lag = (t_obj - timedelta(days=1)).strftime("%Y-%m-%d")
+                lead = (t_obj + timedelta(days=1)).strftime("%Y-%m-%d")
+            elif dtype == "datetime":
+                lag = (t_obj - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+                lead = (t_obj + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                continue
+            getnwm_discharge(lag, lead, fid_path, huc_dir)
 
-            if (
-                start_date_obj == end_date_obj
-                and determinedatatimeformat(start_date) == "date"
-            ):
-                print(
-                    "Please provide a start and end date at least 1 day apart or mention hours."
-                )
-                return
-            elif start_date_obj > end_date_obj:
-                print("Start date cannot be after the end date.")
-                return
-
-            getnwm_discharge(start_date, end_date, featureID_dir, HUC_dir)
-
-        if value_times:
-            retrospective_dir = os.path.join(
-                HUC_dir, "discharge", "nwm30_retrospective"
+            # Extract specific time
+            getdischargeforspecifiedtime(
+                retro_dir, fid_path, time, data_dir, huc, dtype
             )
-            for time in value_times:
-                datetype = determinedatatimeformat(time)
-                getdischargeforspecifiedtime(
-                    retrospective_dir, featureID_dir, time, data_dir, huc, datetype
+
+            # Cleanup temporary window file if we didn't have retro_dir before
+            if not initial_exists:
+                tmp_file = os.path.join(
+                    retro_dir, f"{lag.replace('-', '')}_{lead.replace('-', '')}.parquet"
                 )
+                if os.path.exists(tmp_file):
+                    os.remove(tmp_file)
+
+    # Final cleanup if directory was created just for this session
+    if (
+        not initial_exists
+        and os.path.exists(discharge_root)
+        and not (start_date and end_date)
+    ):
+        shutil.rmtree(discharge_root)

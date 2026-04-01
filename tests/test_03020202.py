@@ -32,17 +32,18 @@ def test_runfim():
 
     # for fixed date or day data
     value_times = ["2016-01-02"]
-    fm.getNWMretrospectivedata(huc, start_date, end_date, value_times)
+    # fm.getNWMretrospectivedata(huc, value_times)
+    fm.getNWMretrospectivedata(huc, start_date, end_date, discharge_sortby="maximum")
 
     # # #Get USGS data
-    fm.getUSGSsitedata(huc, start_date, end_date)
+    # fm.getUSGSsitedata(huc, start_date, end_date)
 
     # fm.plotNWMStreamflow(huc, start_date, end_date, feature_id)
     # # #Get the forecast data
     # # #Short range forecast
-    fm.getNWMForecasteddata(
-        huc, forecast_range="shortrange", forecast_date="2024-11-14"
-    )
+    # fm.getNWMForecasteddata(
+    #     huc, forecast_range="shortrange", forecast_date="2024-11-14"
+    # )
 
     # # #Long range forecast
     # # fm.getNWMForecasteddata(
@@ -55,4 +56,4 @@ def test_runfim():
     # )
 
     # Run the FIM model
-    # fm.runOWPHANDFIM(huc)
+    # fm.runOWPHANDFIM(huc, depth=True)

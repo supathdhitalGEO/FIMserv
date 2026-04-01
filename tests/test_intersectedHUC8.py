@@ -1,6 +1,6 @@
 import fimserve as fm
 
-user_boundary = "/Users/supath/Downloads/MSResearch/FIMpef/CodeUsage/SampleData/Data/Neuse/FIMEvaluatedExtent.shp"
+user_boundary = "./path/to/your/boundary file"
 
-summary = fm.getIntersectedHUC8ID(user_boundary)
+summary = fm.getIntersectedHUC8ID(user_boundary, area=True)
 print(summary)
