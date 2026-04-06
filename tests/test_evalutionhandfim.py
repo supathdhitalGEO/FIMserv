@@ -5,18 +5,18 @@ import pandas as pd
 # Look for the benchmark FIM data for the HUC8 and event date
 def test_bm_fimlookup():
     out = fm.fim_lookup(
-        # HUCID="03040204",
+        HUCID="03040204",
         # date_input="2024-06-24",  # If user is more specific then they can pass date (with hour if known) along with HUC8
         # start_date="2016-09-20",  # If user is not sure of the exact date then they can pass a range of dates
         # end_date="2016-10-09",
         # return_period=500,  # For Tier_4; BLE based benchmark, user can pass return period to genrate OWP HAND FIM to evaluate, we have 100 and 500 yr flows saves in AWS
         # tier = "tier3" , # It further filters the results- could be HWM, tier1-4
-        run_handfim=True,  # It will look for the owp hand fim for the mentioned HUC8 and date, if not found it will download and generate the owp hand fim; default is False
-        file_name="HWM_10_0m_20160928_20161009_791303W341522N_BM.tif",  # If user pass the specific filename, it will download that and assume that this is the right benchmark, else based on exact match of date it will look for the benchmark
+        # run_handfim=True,  # It will look for the owp hand fim for the mentioned HUC8 and date, if not found it will download and generate the owp hand fim; default is False
+        # file_name="HWM_10_0m_20160928_20161009_791303W341522N_BM.tif",  # If user pass the specific filename, it will download that and assume that this is the right benchmark, else based on exact match of date it will look for the benchmark
         # huc_intersectedarea= True, #gives the overlapping percentage of benchmark data with each of interesected HUC
         # huc_thresholdarea= 10, #some percentage--> below which the intersected HUCs will not be considered for evaluation, default is 0
         # eval_individual_huc=False,  # If True, it will create separate folders for each HUC8 with the respective benchmark data and evaluation results; if False, it will create a combined folder with all intersecting HUC8s and the benchmark data; default is False
-        out_dir="../test_FIMeval",  # Required if user wants to download the benchmark FIM data
+        # out_dir="../test_FIMeval",  # Required if user wants to download the benchmark FIM data
     )
     print(out)
 
